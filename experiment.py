@@ -11,6 +11,10 @@ from klibs.KLCommunication import message
 from klibs.KLUtilities import hide_mouse_cursor, now
 from random import shuffle
 
+from datatable import Frame, rbind, update, to_csv
+
+from ExpAssets.Resources.code.OptiTracker import OptiTracker
+
 LEFT = "Left"
 RIGHT = "Right"
 CENTRE = "Centre"
@@ -30,6 +34,16 @@ BACKHAND = "Backhand"
 class BackHandFrontHand(klibs.Experiment):
 
 	def setup(self):
+		self.opti = OptiTracker()
+		self.optidata = {
+			"Prefix": Frame(),
+			"MarkerSets": Frame(),
+			"LegacyMarkerSet": Frame(),
+			"RigidBodies": Frame(),
+			"Skeletons": Frame(),
+			"AssetMarkers": Frame()
+		}
+
 		px_cm = round(P.ppi / 2.54)
 		placeholder_cm = 4
 
@@ -82,12 +96,28 @@ class BackHandFrontHand(klibs.Experiment):
 		any_key()
 		clear()
 		self.present_arrangment()
+		self.opti.start()
 
 
 	def trial(self):
 		hide_mouse_cursor()
 		trial_start = now()
 		any_key()
+		self.opti.stop()
+		trial_frames = self.opti.export()
+		for asset_type in trial_frames.keys():
+			asset_frame = trial_frames[asset_type]
+			asset_frame[:, update(
+				block_num=P.block_number, 
+				trial_num=P.trial_number, 
+				block_task=self.block_task, 
+				block_hand=self.block_hand, 
+				target_loc=self.target_loc, 
+				distractor_loc=self.distractor_loc
+			)]
+
+			self.optidata[asset_type] = rbind(self.optidata[asset_type], asset_frame)
+
 
 		return {
 			"block_num": P.block_number,
@@ -106,7 +136,9 @@ class BackHandFrontHand(klibs.Experiment):
 		pass
 
 	def clean_up(self):
-		pass
+		for asset_type in self.optidata.keys():
+			self.optidata[asset_type].to_csv(f"{P.subj_id}_{asset_type}.csv")
+
 
 	def present_arrangment(self, trial_prep = False):
 		fill()
