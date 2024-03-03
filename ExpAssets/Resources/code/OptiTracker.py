@@ -1,7 +1,7 @@
 import sys
 import os
 import datatable as dt
-from typing import Tuple, Dict, List
+from typing import Tuple, Dict, List, Any, Union
 
 # Get script directory to allow for relative imports
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -87,10 +87,30 @@ class OptiTracker:
     # Get new frame data
     def recieve_frame(self, frame_data: Dict[str, List[Dict]]) -> None:
         # Store frame data
-        for asset_type in frame_data.keys():
-            for asset_data in frame_data[asset_type]:
-                self.frames[asset_type].rbind(dt.Frame(asset_data))
+        for asset in frame_data.keys():
+            for frame in frame_data[asset]:
+                self.frames[asset].rbind(dt.Frame(frame))
 
+
+    def update_frame(self, insert: Dict[Any, Any], into: Union[str | List[str]] = None) -> None:
+        if into is not None:
+            assets_to_update = [into] if isinstance(into, str) else into
+
+        else:
+            assets_to_update = self.frames.keys()
+
+        try:
+            for asset in assets_to_update:
+                self.frames[asset][:, dt.update(**insert)]
+
+        except KeyError:
+            raise ValueError(f"OptiTracker.update_frame: Invalid asset type {asset}")
+
+
+    def write_data(self, path: str) -> None:
+        for asset, frame in self.frames.items():
+            frame.to_csv(f"{path}/{asset}.csv")
+    
     # Return frame and reset to None
     def export(self) -> Dict[str, dt.Frame]:
         return self.frames

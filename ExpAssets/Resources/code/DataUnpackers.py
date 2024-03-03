@@ -13,15 +13,15 @@ from typing import Tuple, List, Dict, Union
 
 class dataUnpacker:
     def __init__(self, unparsed_bytestream: bytes = None, NatNetStreamVersion: List[int] = None) -> None:
-        self.natnet_version = NatNetStreamVersion      # Unlikely to be implemented
-        self._structure = self._get_structure()   # Bespoke Asset-specific Construct Structure
-        self._framedata = None                         # Container for parsed data
+        self.natnet_version = NatNetStreamVersion      # implementation unlikely until future updates warrant it
+        self._structure = self._get_structure()        # asset bespoke parsing structures, see DataStructures.py
+        self._framedata = None                         # container for unpacked data
 
-        # Parse data if provided during instantiation
+        # parses on init if data
         if unparsed_bytestream is not None:
             self.parse(unparsed_bytestream)
 
-    # Fetch structure corresponding to asset type
+    # fetch structure corresponding to asset type
     def _get_structure(self) -> Struct:
         """
         Returns the Struct corresponding to the type of this instance
@@ -32,21 +32,21 @@ class dataUnpacker:
         except KeyError:
             raise ValueError(f"dataUnpacker._get_structure() | Unrecognized asset type.\n\tExpected: {FRAMEDATA_STRUCTS.keys()}\n\tSupplied: {type(self)}")
     
-    # Returns landing position in datastream after parsingg
+    # returns landing position in datastream after parsingg
     def relative_offset(self) -> int:
         if self._framedata is not None:
             return self._framedata.relative_offset
         
         return 0
     
-    # Shadows Construct.Struct.parse() method
+    # shadows Construct.Struct.parse() method
     def parse(self, unparsed_bytestream: bytes) -> None:
         self._framedata = self._structure.parse(unparsed_bytestream)
 
-    # Coerces data parcels into list[dict]; bundling procedure varies by asset type
-    #       NOTE: Children drop terminal entries (1 = obj addr, -1 = offset)
+    # coerces data parcels into list[dict]; bundling procedure varies by asset type
+    #       NOTE: children drop leading entries (obj addr)
     def data(self) -> List[Dict]:
-        raise NotImplementedError("AssetDataStruct.dump() | Must be implemented by child class.")
+        raise NotImplementedError("AssetDataStruct.data() | Must be implemented by child class.")
 
 
 
@@ -60,6 +60,7 @@ class prefixData(dataUnpacker):
         super().__init__(unparsed_bytestream, NatNetStreamVersion)     
         
     def data(self) -> List[Dict]:
+        # Drops terminal entry (relative stream pos)
         return [dict(list(self._framedata.items())[1:-1])]
 
 
@@ -72,7 +73,7 @@ class markerSetsData(dataUnpacker):
                 for marker_set in self._framedata.children
                 for marker in marker_set.children]
     
-
+# if you thought these'd come with labels, you're wrong.
 class labeledMarkerSetData(dataUnpacker):
     def __init__(self, unparsed_bytestream: bytes = None, NatNetStreamVersion: List[int] = None) -> None:
         super().__init__(unparsed_bytestream, NatNetStreamVersion)
@@ -81,7 +82,8 @@ class labeledMarkerSetData(dataUnpacker):
         return [dict(list(labeledMarker.items())[1:]) 
                 for labeledMarker in self._framedata.children]
 
-
+# no idea what these are; not documented in SDK
+# NOTE: untested, unpacking breaks upon reaching them; without documentation I'm struggling to confirm correct structuring
 class legacyMarkerSetData(dataUnpacker):
     def __init__(self, unparsed_bytestream: bytes = None, NatNetStreamVersion: List[int] = None) -> None:
         super().__init__(unparsed_bytestream, NatNetStreamVersion)
@@ -101,6 +103,7 @@ class rigidBodiesData(dataUnpacker):
                 for rigidBody in self._framedata.children]
 
 
+# instead of giving rigid body collectives a shared ID, they gave them their own class
 class skeletonsData(dataUnpacker):
     def __init__(self, unparsed_bytestream: bytes = None, NatNetStreamVersion: List[int] = None) -> None:
         super().__init__(unparsed_bytestream, NatNetStreamVersion)
@@ -110,10 +113,12 @@ class skeletonsData(dataUnpacker):
                 for skeleton in self._framedata.children
                 for rigidBody in skeleton.children]
     
+# I think this is in the dictionary under "redundancy"
 class assetsData(dataUnpacker):
     def __init__(self, unparsed_bytestream: bytes = None, NatNetStreamVersion: List[int] = None) -> None:
         super().__init__(unparsed_bytestream, NatNetStreamVersion)
 
+    # NOTE: out of necessity, not choice
     def data(self, asset_type) -> List[Dict]:
         if (asset_type == "AssetRigidBodies"):
             return [dict(list(assetRigidBody.items())[1:]) 
@@ -130,7 +135,7 @@ class assetsData(dataUnpacker):
             raise ValueError(f"assetData.export() | asset_type must be 'AssetRigidBodies' or 'AssetMarkers'; type supplied: {asset_type}")
 
 
-
+# NOTE: untested, cannot verify that calibration matrices are correctly parsed
 class forcePlatesData(dataUnpacker):
     def __init__(self, unparsed_bytestream: bytes = None, NatNetStreamVersion: List[int] = None) -> None:
         super().__init__(unparsed_bytestream, NatNetStreamVersion)
@@ -164,7 +169,8 @@ class suffixData(dataUnpacker):
     
 
 
-# Unpacker class type used to select the correct structure
+# unpacker class type used to select the correct structure
+# NOTE: potentially will be refactored to allow for keying via stream version
 FRAMEDATA_STRUCTS = {
     prefixData:             dataStruct_Prefix,
     markerSetsData:         dataStruct_MarkerSets,
@@ -203,7 +209,7 @@ class frameData:
     def log(self, asset_type: str, asset_frame_data: List[Dict]) -> None:
         self._framedata[asset_type].append(asset_frame_data)
 
-    # Log frame data for a given asset type
+    # TODO: build back in; or drop, ostensibly unnecessary
     def __validate_export_arg(self, arg: Union[Tuple[str,...], str], name: str) -> Tuple[str, ...]:
         if isinstance(arg, str):
             return (arg,)
@@ -212,7 +218,8 @@ class frameData:
         else:
             raise TypeError(f"frameData.export() | {name}: expected str or tuple thereof, got {type(arg)}")
 
-    # Export frame data for desired asset types; also allows for omission
+    # exporting allows for selective inclusion/exclusion of asset types
+        # TODO: make that true
     def export(self, include: Union[Tuple[str, ...], str] = None, exclude: Union[Tuple[str, ...], str] = None) -> Dict[str, Tuple[Dict, ...]]:
         # include = self.__validate_export_arg(include, "include")
 
