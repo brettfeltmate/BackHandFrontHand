@@ -92,7 +92,7 @@ class OptiTracker:
                 self.frames[asset].rbind(dt.Frame(frame))
 
 
-    def update_frame(self, insert: Dict[Any, Any], into: Union[str | List[str]] = None) -> None:
+    def update_frame(self, insert: Dict[Any, Any], into: Union[str, List[str]] = None) -> None:
         if into is not None:
             assets_to_update = [into] if isinstance(into, str) else into
 

@@ -11,9 +11,11 @@ import klibs
 from klibs import P
 from klibs.KLGraphics import KLDraw as kld
 from klibs.KLGraphics import fill, blit, flip, clear
-from klibs.KLUserInterface import any_key, ui_request
+from klibs.KLUserInterface import any_key, ui_request, key_pressed
 from klibs.KLCommunication import message
 from klibs.KLUtilities import hide_mouse_cursor, now
+from klibs.KLAudio import Tone
+
 from random import shuffle, randrange
 
 import datatable as dt
@@ -39,31 +41,40 @@ PLACEHOLDER_SIZE_CM   = 4
 PLACEHOLDER_BRIM_CM   = 1
 PLACEHOLDER_OFFSET_CM = 10
 
-# trial reveal timing
-TRIAL_REVEAL = (1000, 2000)
+# timing constants
+GO_SIGNAL_ONSET = (1000, 2000)
+RESPONSE_TIMEOUT = 2000
+
+# audio constants
+TONE_DURATION = 50
+TONE_SHAPE    = "sine"
+TONE_FREQ     = 784      # ridin' on yo G5 airplane
+TONE_VOLUME   = 0.5
 
 
 class BackHandFrontHand(klibs.Experiment):
 
 	def setup(self):
-		px_cm = round(P.ppi / 2.54)
+		PX_CM = round(P.ppi / 2.54)
 
-		holder_offset = px_cm * PLACEHOLDER_OFFSET_CM 	# centre-to-centre
-		holder_px 	  = px_cm * PLACEHOLDER_SIZE_CM	
-		holder_brim   = px_cm * PLACEHOLDER_BRIM_CM   	
-		holder_diam	  = holder_px + holder_brim			
+		OFFSET    = PX_CM * PLACEHOLDER_OFFSET_CM 	# centre-to-centre
+		HOLDER_PX = PX_CM * PLACEHOLDER_SIZE_CM	
+		BRIM_PX   = PX_CM * PLACEHOLDER_BRIM_CM   	
+		DIAM_PX	  = HOLDER_PX + BRIM_PX			
 
 		self.locs = {
-			LEFT:  (P.screen_c[0] - holder_offset, P.screen_c[1]),
+			LEFT:  (P.screen_c[0] - OFFSET, P.screen_c[1]),
 			CENTRE: P.screen_c,
-			RIGHT: (P.screen_c[0] + holder_offset, P.screen_c[1])
+			RIGHT: (P.screen_c[0] + OFFSET, P.screen_c[1])
 		}
 
 
 		self.placeholders = {
-			TARGET:     kld.Annulus(holder_diam, holder_brim, fill=WHITE),
-			DISTRACTOR: kld.Annulus(holder_brim, holder_brim, fill=GRUE)
+			TARGET:     kld.Annulus(DIAM_PX, BRIM_PX, fill=WHITE),
+			DISTRACTOR: kld.Annulus(BRIM_PX, BRIM_PX, fill=GRUE)
 		}
+
+		self.go_signal = Tone(TONE_DURATION, TONE_SHAPE, TONE_FREQ, TONE_VOLUME)
 
 		self.task_sequence = [
 			# which side, of which hand, is to be used
@@ -114,9 +125,10 @@ class BackHandFrontHand(klibs.Experiment):
 
 
 		# induce slight uncertainty in the reveal time
-		self.evm.add_event("reveal", randrange(*TRIAL_REVEAL))
+		self.evm.add_event("go_signal", randrange(*GO_SIGNAL_ONSET))
+		self.evm.add_event("response_timeout", RESPONSE_TIMEOUT, after = "go_signal")
 
-		# TODO: occulude vision via plato
+		# TODO: close plato
 
 		# setup phase
 		self.present_arrangment(trial_prep=True)
@@ -131,16 +143,25 @@ class BackHandFrontHand(klibs.Experiment):
 
 	def trial(self):
 		hide_mouse_cursor()
-
-		while self.evm.before("reveal"):
-			ui_request()
-
+		
 		self.present_arrangment(flag_target=True)
+
 		# TODO: open plato
 
-		hide_mouse_cursor()
+		while self.evm.before("go_signal"):
+			# TODO: check for premptive movement
+			ui_request()
+
+		self.go_signal.play()
+
 		trial_start = now()
-		any_key()
+		timeout_at = trial_start + (RESPONSE_TIMEOUT // 1000)
+
+		responded = False
+		while now() < timeout_at and not responded:
+			responded = key_pressed()
+
+		
 		self.opti.stop()
 
 
@@ -165,6 +186,8 @@ class BackHandFrontHand(klibs.Experiment):
 			frame = trial_frames[asset]
 			frame[:, 
 			   dt.update(
+				   	participant_id = P.p_id,
+					practicing	   = P.practicing,
 					block_num	   = P.block_number, 
 					trial_num	   = P.trial_number, 
 					hand_side 	   = self.hand_side, 
@@ -176,8 +199,8 @@ class BackHandFrontHand(klibs.Experiment):
 			self.optidata[asset] = dt.rbind(self.optidata[asset], frame)
 
 	def clean_up(self):
-		for asset_type in self.optidata.keys():
-			self.optidata[asset_type].to_csv(f"{P.p_id}_{asset_type}.csv")
+		for asset in self.optidata.keys():
+			self.optidata[asset].to_csv(path = f"BackHandFrontHand_{asset}_framedata.csv", append=True)
 
 
 	def present_arrangment(self, trial_prep = False, flag_target = False):
