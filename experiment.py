@@ -185,15 +185,16 @@ class BackHandFrontHand(klibs.Experiment):
 		for asset in trial_frames.keys():
 			frame = trial_frames[asset]
 			frame[:, 
-			   dt.update(
-				   	participant_id = P.p_id,
-					practicing	   = P.practicing,
-					block_num	   = P.block_number, 
-					trial_num	   = P.trial_number, 
-					hand_side 	   = self.hand_side, 
-					hand_used 	   = self.hand_used, 
-					target_loc	   = self.target_loc, 
-					distractor_loc = self.distractor_loc
+			   dt.update(**{
+				   	"participant_id" : P.p_id,
+					"practicing"	 : P.practicing,
+					"block_num"	   	 : P.block_number, 
+					"trial_num"	     : P.trial_number, 
+					"hand_side" 	 : self.hand_side, 
+					"hand_used" 	 : self.hand_used, 
+					"target_loc"	 : self.target_loc, 
+					"distractor_loc" : self.distractor_loc
+			   }
 			)]
 
 			self.optidata[asset] = dt.rbind(self.optidata[asset], frame)
