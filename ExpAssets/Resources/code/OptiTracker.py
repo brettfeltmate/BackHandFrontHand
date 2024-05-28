@@ -1,14 +1,5 @@
-import sys
-import os
 import datatable as dt
-from typing import Tuple, Dict, List, Any, Union
-
-# Get script directory to allow for relative imports
-SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
-sys.path.append(os.path.dirname(SCRIPT_DIR))
-
-
-# Import native API class
+from typing import Tuple, Dict, List
 from NatNetClient import NatNetClient
 
 # Constants denoting asset types
@@ -26,109 +17,66 @@ CAMERA = "Camera"
 SUFFIX = "Suffix"
 
 
-# Wrapper for NatNetClient API class
 class OptiTracker:
     def __init__(self) -> None:
         # NatNetClient instance
         self.client = self.init_client()
 
-        # self.frame_listeners = {
-        #     PREFIX: True, MARKER_SET: True, LABELED_MARKER: True,
-        #     LEGACY_MARKER_SET: True, RIGID_BODY: True, SKELETON: True,
-        #     ASSET_RIGID_BODY: True, ASSET_MARKER: True, FORCE_PLATE: False,
-        #     DEVICE: False, CAMERA: True, SUFFIX: True
-        # }
+        # TODO:
+        # - Add optional selectivity
+        # - Insert asset IDs from descriptions into respective mocap tables
 
-        # self.description_listeners = {
-        #     MARKER_SET: True, RIGID_BODY: True, SKELETON: True, FORCE_PLATE: False, 
-        #     DEVICE: False, CAMERA: True, ASSET_RIGID_BODY: True, ASSET_MARKER: True
-        # }
+        self.frames = {
+            "Prefix": dt.Frame(),
+            "MarkerSet": dt.Frame(),
+            "LabeledMarker": dt.Frame(),
+            "LegacyMarkerSet": dt.Frame(),
+            "RigidBody": dt.Frame(),
+            "Skeleton": dt.Frame(),
+            "AssetRigidBody": dt.Frame(),
+            "AssetMarker": dt.Frame(),
+            "ForcePlate": dt.Frame(),
+            "Device": dt.Frame(),
+            "Suffix": dt.Frame(),
+        }
 
-
-        # self.descriptions = {
-        #     asset_type: dt.Frame() for asset_type, store_value in self.description_listeners.items() if store_value
-        # }
+        self.descriptions = {
+            "MarkerSet": dt.Frame(),
+            "RigidBody": dt.Frame(),
+            "Skeleton": dt.Frame(),
+            "AssetRigidBody": dt.Frame(),
+            "AssetMarker": dt.Frame(),
+            "ForcePlate": dt.Frame(),
+            "Device": dt.Frame(),
+            "Camera": dt.Frame(),
+        }
 
     # Create NatNetClient instance
     def init_client(self) -> object:
-        
-        # Spawn client instance
         client = NatNetClient()
 
-        # Set frame listener
-        client.frame_data_listener = self.recieve_frame
+        # Assign listener callbacks
+        client.frame_data_listener = self.collect_frame
+        client.description_listener = self.collect_descriptions
 
         return client
-    
-    # Start NatNetClient, returns True if successful, False otherwise
-    def start(self) -> bool:
-        self.init_frame()
+
+    # Plug into Motive stream
+    def start_client(self) -> bool:
         return self.client.startup()
 
     # Stop NatNetClient
-    def stop(self) -> None:
+    def stop_client(self) -> None:
         self.client.shutdown()
 
-    def init_frame(self) -> Dict[str, dt.Frame]:
-        self.frames = {
-            'Prefix':dt.Frame(), 
-            'MarkerSets':dt.Frame(), 
-            #'LabeledMarkerSet':dt.Frame(),
-            'LegacyMarkerSet':dt.Frame(),
-            'RigidBodies':dt.Frame(), 
-            'Skeletons':dt.Frame(),
-            #'AssetRigidBodies':dt.Frame(),
-            'AssetMarkers':dt.Frame(),
-            #'ForcePlates':dt.Frame(), 
-            #'Devices':dt.Frame(), 
-            #'Suffix': dt.Frame()
-        }
+    # streamdata collection callbacks
 
-    # Get new frame data
-    def recieve_frame(self, frame_data: Dict[str, List[Dict]]) -> None:
-        # Store frame data
-        for asset in frame_data.keys():
-            for frame in frame_data[asset]:
-                self.frames[asset].rbind(dt.Frame(frame))
+    def collect_frame(self, frame_data: Dict[str, List[Dict]]) -> None:
+        # HACK: clumsy nesting
+        for asset_type in frame_data.keys():
+            for asset_data in frame_data[asset_type]:
+                self.frames[asset_type].rbind(dt.Frame(asset_data))
 
-
-    def update_frame(self, insert: Dict[Any, Any], into: Union[str, List[str]] = None) -> None:
-        if into is not None:
-            assets_to_update = [into] if isinstance(into, str) else into
-
-        else:
-            assets_to_update = self.frames.keys()
-
-        try:
-            for asset in assets_to_update:
-                self.frames[asset][:, dt.update(**insert)]
-
-        except KeyError:
-            raise ValueError(f"OptiTracker.update_frame: Invalid asset type {asset}")
-
-
-    def write_data(self, path: str) -> None:
-        for asset, frame in self.frames.items():
-            frame.to_csv(f"{path}/{asset}.csv")
-    
-    # Return frame and reset to None
-    def export(self) -> Dict[str, dt.Frame]:
-        return self.frames
-    
-
-        
-
-    # Get new model descriptions
     def collect_descriptions(self, descriptions: Dict[str, Tuple[Dict, ...]]) -> None:
         for asset_type, asset_description in descriptions.items():
             self.descriptions[asset_type].rbind(dt.Frame(asset_description))
-
-
-
-
-
-
-
-
-
-
