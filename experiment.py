@@ -5,220 +5,249 @@ __author__ = "Brett Feltmate"
 import os
 import sys
 
-
-
 import klibs
 from klibs import P
 from klibs.KLGraphics import KLDraw as kld
 from klibs.KLGraphics import fill, blit, flip, clear
 from klibs.KLUserInterface import any_key, ui_request, key_pressed
 from klibs.KLCommunication import message
-from klibs.KLUtilities import hide_mouse_cursor, now
+from klibs.KLUtilities import hide_mouse_cursor, now, pump
+from klibs.KLTime import CountDown
 from klibs.KLAudio import Tone
 
 from random import shuffle, randrange
 
 import datatable as dt
 
-#from ExpAssets import *
-from OptiTracker import OptiTracker 
+# from ExpAssets import *
+from OptiTracker import OptiTracker
+from get_key_state import get_key_state
 
 # i hate typos
-LEFT   	   = "Left"
-RIGHT  	   = "Right"
-CENTRE 	   = "Centre"
-FRONT  	   = "Front"
-BACK   	   = "Back"
-TARGET 	   = "Target"
+LEFT = "Left"
+RIGHT = "Right"
+CENTRE = "Centre"
+FRONT = "Front"
+BACK = "Back"
+TARGET = "Target"
 DISTRACTOR = "Distractor"
 
 # colours
 WHITE = [255, 255, 255, 255]
-GRUE  = [90, 90, 96, 255]
+GRUE = [90, 90, 96, 255]
 
 # sizing constants
-PLACEHOLDER_SIZE_CM   = 4
-PLACEHOLDER_BRIM_CM   = 1
+PLACEHOLDER_SIZE_CM = 4
+PLACEHOLDER_BRIM_CM = 1
 PLACEHOLDER_OFFSET_CM = 10
 
 # timing constants
-GO_SIGNAL_ONSET = (1000, 2000)
-RESPONSE_TIMEOUT = 2000
+OPTIBOOTLAG = 100
+GO_SIGNAL_ONSET = 200
+RESPONSE_TIMEOUT = 5000
 
 # audio constants
 TONE_DURATION = 50
-TONE_SHAPE    = "sine"
-TONE_FREQ     = 784      # ridin' on yo G5 airplane
-TONE_VOLUME   = 0.5
+TONE_SHAPE = "sine"
+TONE_FREQ = 784  # ridin' on yo G5 airplane
+TONE_VOLUME = 0.5
 
 
 class BackHandFrontHand(klibs.Experiment):
+    def setup(self):
+        PX_CM = round(P.ppi / 2.54)
 
-	def setup(self):
-		PX_CM = round(P.ppi / 2.54)
+        OFFSET = PX_CM * PLACEHOLDER_OFFSET_CM  # centre-to-centre
+        HOLDER_PX = PX_CM * PLACEHOLDER_SIZE_CM
+        BRIM_PX = PX_CM * PLACEHOLDER_BRIM_CM
+        DIAM_PX = HOLDER_PX + BRIM_PX
 
-		OFFSET    = PX_CM * PLACEHOLDER_OFFSET_CM 	# centre-to-centre
-		HOLDER_PX = PX_CM * PLACEHOLDER_SIZE_CM	
-		BRIM_PX   = PX_CM * PLACEHOLDER_BRIM_CM   	
-		DIAM_PX	  = HOLDER_PX + BRIM_PX			
+        self.locs = {
+            LEFT: (P.screen_c[0] - OFFSET, P.screen_c[1]),
+            CENTRE: P.screen_c,
+            RIGHT: (P.screen_c[0] + OFFSET, P.screen_c[1]),
+        }
 
-		self.locs = {
-			LEFT:  (P.screen_c[0] - OFFSET, P.screen_c[1]),
-			CENTRE: P.screen_c,
-			RIGHT: (P.screen_c[0] + OFFSET, P.screen_c[1])
-		}
+        self.placeholders = {
+            TARGET: kld.Annulus(DIAM_PX, BRIM_PX, fill=WHITE),
+            DISTRACTOR: kld.Annulus(BRIM_PX, BRIM_PX, fill=GRUE),
+        }
 
+        self.go_signal = Tone(TONE_DURATION, TONE_SHAPE, TONE_FREQ, TONE_VOLUME)
 
-		self.placeholders = {
-			TARGET:     kld.Annulus(DIAM_PX, BRIM_PX, fill=WHITE),
-			DISTRACTOR: kld.Annulus(BRIM_PX, BRIM_PX, fill=GRUE)
-		}
+        self.task_sequence = [
+            # which side, of which hand, is to be used
+            [BACK, LEFT],
+            [BACK, RIGHT],
+            [FRONT, LEFT],
+            [FRONT, RIGHT],
+        ]
 
-		self.go_signal = Tone(TONE_DURATION, TONE_SHAPE, TONE_FREQ, TONE_VOLUME)
+        shuffle(self.task_sequence)
 
-		self.task_sequence = [
-			# which side, of which hand, is to be used
-			[BACK, LEFT], [BACK, RIGHT], 
-			[FRONT, LEFT], [FRONT, RIGHT]
-		]
+        self.opti = OptiTracker()
 
-		shuffle(self.task_sequence)
+        self.optidata = {
+            "Prefix": dt.Frame(),
+            "MarkerSets": dt.Frame(),
+            "LegacyMarkerSet": dt.Frame(),
+            "RigidBodies": dt.Frame(),
+            "Skeletons": dt.Frame(),
+            "AssetMarkers": dt.Frame(),
+        }
 
-		self.opti = OptiTracker()
-		
-		self.optidata = {
-			"Prefix": 		   dt.Frame(),
-			"MarkerSets": 	   dt.Frame(),
-			"LegacyMarkerSet": dt.Frame(),
-			"RigidBodies": 	   dt.Frame(),
-			"Skeletons": 	   dt.Frame(),
-			"AssetMarkers":    dt.Frame()
-		}
+    def block(self):
+        self.hand_side, self.hand_used = self.task_sequence.pop()
 
+        instructions = f"(Full Instrux TBD)\n Knockover targets with the {self.hand_side} of your {self.hand_used} hand."
+        instructions += "\n\nPress any key to begin."
 
+        if P.practicing:
+            instructions += "\n\n(practice block)"
 
+        fill()
+        message(instructions, location=P.screen_c)
+        flip()
 
-	def block(self):
-		self.hand_side, self.hand_used = self.task_sequence.pop()
+        any_key()
 
-		instructions = f"(Full Instrux TBD)\n Knockover targets with the {self.hand_side} of your {self.hand_used} hand."
-		instructions += "\n\nPress any key to begin."
+    def setup_response_collector(self):
+        pass
 
-		if P.practicing:
-			instructions += "\n\n(practice block)"
+    def trial_prep(self):
+        # extract trial setup
+        self.target, self.distractor = self.arrangement.split("_")
 
-		fill()
-		message(instructions, location=P.screen_c)
-		flip()
+        self.target_loc, _ = self.target.split("-")
+        self.distractor_loc, _ = self.distractor.split("-")
 
-		any_key()
+        # induce slight uncertainty in the reveal time
+        self.evm.add_event(label="go_signal", onset=GO_SIGNAL_ONSET)
+        self.evm.add_event(label="response_timeout", onset=RESPONSE_TIMEOUT, after="go_signal")
 
-	def setup_response_collector(self):
-		pass
+        # TODO: close plato
 
-	def trial_prep(self):
-		# extract trial setup
-		self.target, self.distractor = self.arrangement.split('_')
+        # setup phase
+        self.present_arrangment(trial_prep=True)
 
-		self.target_loc, _     = self.target.split('-')
-		self.distractor_loc, _ = self.distractor.split('-')
+        while True:
+            q = pump(True)
+            if key_pressed(key='space', queue=q)
+                break
 
+        # "uncued" phase
+        self.present_arrangment()
 
-		# induce slight uncertainty in the reveal time
-		self.evm.add_event("go_signal", randrange(*GO_SIGNAL_ONSET))
-		self.evm.add_event("response_timeout", RESPONSE_TIMEOUT, after = "go_signal")
+        # begin tracking
+        self.opti.start()
 
-		# TODO: close plato
+        opti_startup = Countdown(OPTIBOOTLAG/1000)
 
-		# setup phase
-		self.present_arrangment(trial_prep=True)
-		any_key()
+        while opti_startup.counting():
+            ui_request()
 
-		# "uncued" phase
-		self.present_arrangment()
+    def trial(self):
+        hide_mouse_cursor()
 
-		# begin tracking
-		self.opti.start()
-
-
-	def trial(self):
-		hide_mouse_cursor()
-		
-		self.present_arrangment(flag_target=True)
-
-		# TODO: open plato
-
-		while self.evm.before("go_signal"):
-			# TODO: check for premptive movement
-			ui_request()
-
-		self.go_signal.play()
-
-		trial_start = now()
-		timeout_at = trial_start + (RESPONSE_TIMEOUT // 1000)
-
-		responded = False
-		while now() < timeout_at and not responded:
-			responded = key_pressed()
-
-		
-		self.opti.stop()
+        self.present_arrangment(flag_target=True)
 
 
 
-		return {
-			"block_num":      P.block_number,
-			"trial_num": 	  P.trial_number,
-			"practicing": 	  P.practicing,
-			"hand_used":  	  self.hand_used,
-			"hand_side":      self.hand_used,
-			"target_loc": 	  self.target_loc,
-			"distractor_loc": self.distractor_loc,
-			"movement_time":  "NA",
-			"response_time":  now() - trial_start,
-			"correct":        "NA"
-		}
+        # TODO: open plato
 
-	def trial_clean_up(self):
-		trial_frames = self.opti.export()
+        while self.evm.before("go_signal"):
+            if get_key_state(key='space') == 0:
+                self.evm.reset()
+                fill()
+                message( text="Please wait for the go-tone.", location=P.screen_c )
+                flip()
 
-		for asset in trial_frames.keys():
-			frame = trial_frames[asset]
-			frame[:, 
-			   dt.update(**{
-				   	"participant_id" : P.p_id,
-					"practicing"	 : P.practicing,
-					"block_num"	   	 : P.block_number, 
-					"trial_num"	     : P.trial_number, 
-					"hand_side" 	 : self.hand_side, 
-					"hand_used" 	 : self.hand_used, 
-					"target_loc"	 : self.target_loc, 
-					"distractor_loc" : self.distractor_loc
-			   }
-			)]
+        self.go_signal.play()
 
-			self.optidata[asset] = dt.rbind(self.optidata[asset], frame)
+        rt = 'NA'
+        mt = 'NA'
+        while self.evm.before("response_timeout"):
+            if get_key_state("space") == 0:
+                continue
 
-	def clean_up(self):
-		for asset in self.optidata.keys():
-			self.optidata[asset].to_csv(path = f"BackHandFrontHand_{asset}_framedata.csv", append=True)
+            rt = self.evm.trial_time_ms
 
+            while mt == 'NA':
+                if get_key_state('enter'):
+                    mt = self.evm.trial_time_ms - rt
+                    break
+            break
 
-	def present_arrangment(self, trial_prep = False, flag_target = False):
-		fill()
+        self.opti.stop()
 
-		blit(self.placeholders[DISTRACTOR], registration = 5, location = self.locs[self.distractor_loc])
+        return {
+            "block_num": P.block_number,
+            "trial_num": P.trial_number,
+            "practicing": P.practicing,
+            "hand_used": self.hand_used,
+            "hand_side": self.hand_used,
+            "target_loc": self.target_loc,
+            "distractor_loc": self.distractor_loc,
+            "movement_time": mt,
+            "response_time": rt
+        }
 
-		if flag_target:
-			blit(self.placeholders[TARGET], registration = 5, location = self.locs[self.target_loc])
+    def trial_clean_up(self):
+        trial_frames = self.opti.export()
 
-		else:
-			blit(self.placeholders[DISTRACTOR], registration = 5, location = self.locs[self.target_loc])
-			if trial_prep:
-				message(
-					"Place objects in placeholders.\nAny key to start.\nFor now, any key to end.",
-					location     = [P.screen_c[0]//3, P.screen_c[1]//3], 
-					registration = 1
-				)
+        for asset in trial_frames.keys():
+            frame = trial_frames[asset]
+            frame[
+                :,
+                dt.update(
+                    **{
+                        "participant_id": P.p_id,
+                        "practicing": P.practicing,
+                        "block_num": P.block_number,
+                        "trial_num": P.trial_number,
+                        "hand_side": self.hand_side,
+                        "hand_used": self.hand_used,
+                        "target_loc": self.target_loc,
+                        "distractor_loc": self.distractor_loc,
+                    }
+                ),
+            ]
 
-		flip()
+            self.optidata[asset] = dt.rbind(self.optidata[asset], frame)
+
+    def clean_up(self):
+        for asset in self.optidata.keys():
+            self.optidata[asset].to_csv(
+                path=f"BackHandFrontHand_{asset}_framedata.csv", append=True
+            )
+
+    def present_arrangment(self, trial_prep=False, flag_target=False):
+        fill()
+
+        blit(
+            self.placeholders[DISTRACTOR],
+            registration=5,
+            location=self.locs[self.distractor_loc],
+        )
+
+        if flag_target:
+            blit(
+                self.placeholders[TARGET],
+                registration=5,
+                location=self.locs[self.target_loc],
+            )
+
+        else:
+            blit(
+                self.placeholders[DISTRACTOR],
+                registration=5,
+                location=self.locs[self.target_loc],
+            )
+            if trial_prep:
+                message(
+                    "Setup props.\nWhen ready, press & hold down spacebar.\nWait until go-tone before acting.",
+                    location=[P.screen_c[0] // 3, P.screen_c[1] // 3],
+                    registration=1,
+                )
+
+        flip()
