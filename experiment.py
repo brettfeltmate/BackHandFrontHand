@@ -41,6 +41,12 @@ PLACEHOLDER_SIZE_CM = 4
 PLACEHOLDER_BRIM_CM = 1
 PLACEHOLDER_OFFSET_CM = 10
 
+# sizing constants
+PLACEHOLDER_SIZE_CM   = 4
+PLACEHOLDER_BRIM_CM   = 1
+PLACEHOLDER_OFFSET_CM = 10
+
+
 # timing constants
 OPTIBOOTLAG = 100
 GO_SIGNAL_ONSET = 200
@@ -70,7 +76,7 @@ class BackHandFrontHand(klibs.Experiment):
 
         self.placeholders = {
             TARGET: kld.Annulus(DIAM_PX, BRIM_PX, fill=WHITE),
-            DISTRACTOR: kld.Annulus(BRIM_PX, BRIM_PX, fill=GRUE),
+            DISTRACTOR: kld.Annulus(DIAM_PX, BRIM_PX, fill=GRUE),
         }
 
         self.go_signal = Tone(TONE_DURATION, TONE_SHAPE, TONE_FREQ, TONE_VOLUME)
@@ -132,16 +138,16 @@ class BackHandFrontHand(klibs.Experiment):
 
         while True:
             q = pump(True)
-            if key_pressed(key='space', queue=q)
+            if key_pressed(key='space', queue=q):
                 break
 
         # "uncued" phase
         self.present_arrangment()
 
         # begin tracking
-        self.opti.start()
+        self.opti.start_client()
 
-        opti_startup = Countdown(OPTIBOOTLAG/1000)
+        opti_startup = CountDown(OPTIBOOTLAG/1000)
 
         while opti_startup.counting():
             ui_request()
@@ -171,14 +177,15 @@ class BackHandFrontHand(klibs.Experiment):
                 continue
 
             rt = self.evm.trial_time_ms
+            q = pump(True)
 
             while mt == 'NA':
-                if get_key_state('enter'):
+                if key_pressed('d'):
                     mt = self.evm.trial_time_ms - rt
                     break
             break
 
-        self.opti.stop()
+        self.opti.stop_client()
 
         return {
             "block_num": P.block_number,
