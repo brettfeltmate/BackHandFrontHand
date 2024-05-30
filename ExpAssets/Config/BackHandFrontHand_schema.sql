@@ -61,5 +61,5 @@ CREATE TABLE trials (
     target_loc text not null,
     distractor_loc text not null,
     movement_time text not null,
-    response_time text not null,
+    response_time text not null
 );

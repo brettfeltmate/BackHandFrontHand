@@ -177,10 +177,10 @@ class BackHandFrontHand(klibs.Experiment):
                 continue
 
             rt = self.evm.trial_time_ms
-            q = pump(True)
 
             while mt == "NA":
-                if key_pressed("d"):
+                q = pump(True)
+                if key_pressed(key="d", queue=q):
                     mt = self.evm.trial_time_ms - rt
                     break
             break
@@ -200,9 +200,7 @@ class BackHandFrontHand(klibs.Experiment):
         }
 
     def trial_clean_up(self):
-        if P.development_mode:
-            pass
-
+        return
         trial_frames = self.opti.export()
 
         for asset in trial_frames.keys():
@@ -226,9 +224,7 @@ class BackHandFrontHand(klibs.Experiment):
             self.optidata[asset] = dt.rbind(self.optidata[asset], frame)
 
     def clean_up(self):
-        if P.development_mode:
-            pass
-
+        return
         for asset in self.optidata.keys():
             self.optidata[asset].to_csv(
                 path=f"BackHandFrontHand_{asset}_framedata.csv", append=True
