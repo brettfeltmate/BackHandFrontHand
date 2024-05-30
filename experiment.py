@@ -42,9 +42,9 @@ PLACEHOLDER_BRIM_CM = 1
 PLACEHOLDER_OFFSET_CM = 10
 
 # sizing constants
-PLACEHOLDER_SIZE_CM   = 4
-PLACEHOLDER_BRIM_CM   = 1
-PLACEHOLDER_OFFSET_CM = 10
+PLACEHOLDER_SIZE_CM = 4
+PLACEHOLDER_BRIM_CM = 1
+PLACEHOLDER_OFFSET_CM = 15
 
 
 # timing constants
@@ -129,7 +129,9 @@ class BackHandFrontHand(klibs.Experiment):
 
         # induce slight uncertainty in the reveal time
         self.evm.add_event(label="go_signal", onset=GO_SIGNAL_ONSET)
-        self.evm.add_event(label="response_timeout", onset=RESPONSE_TIMEOUT, after="go_signal")
+        self.evm.add_event(
+            label="response_timeout", onset=RESPONSE_TIMEOUT, after="go_signal"
+        )
 
         # TODO: close plato
 
@@ -138,16 +140,16 @@ class BackHandFrontHand(klibs.Experiment):
 
         while True:
             q = pump(True)
-            if key_pressed(key='space', queue=q):
+            if key_pressed(key="space", queue=q):
                 break
 
         # "uncued" phase
         self.present_arrangment()
 
         # begin tracking
-        self.opti.start_client()
+        # self.opti.start_client()
 
-        opti_startup = CountDown(OPTIBOOTLAG/1000)
+        opti_startup = CountDown(OPTIBOOTLAG / 1000)
 
         while opti_startup.counting():
             ui_request()
@@ -157,21 +159,19 @@ class BackHandFrontHand(klibs.Experiment):
 
         self.present_arrangment(flag_target=True)
 
-
-
         # TODO: open plato
 
         while self.evm.before("go_signal"):
-            if get_key_state(key='space') == 0:
+            if get_key_state(key="space") == 0:
                 self.evm.reset()
                 fill()
-                message( text="Please wait for the go-tone.", location=P.screen_c )
+                message(text="Please wait for the go-tone.", location=P.screen_c)
                 flip()
 
         self.go_signal.play()
 
-        rt = 'NA'
-        mt = 'NA'
+        rt = "NA"
+        mt = "NA"
         while self.evm.before("response_timeout"):
             if get_key_state("space") == 0:
                 continue
@@ -179,27 +179,30 @@ class BackHandFrontHand(klibs.Experiment):
             rt = self.evm.trial_time_ms
             q = pump(True)
 
-            while mt == 'NA':
-                if key_pressed('d'):
+            while mt == "NA":
+                if key_pressed("d"):
                     mt = self.evm.trial_time_ms - rt
                     break
             break
 
-        self.opti.stop_client()
+        # self.opti.stop_client()
 
         return {
             "block_num": P.block_number,
             "trial_num": P.trial_number,
             "practicing": P.practicing,
-            "hand_used": self.hand_used,
-            "hand_side": self.hand_used,
+            "left_right_hand": self.hand_used,
+            "palm_back_hand": self.hand_side,
             "target_loc": self.target_loc,
             "distractor_loc": self.distractor_loc,
             "movement_time": mt,
-            "response_time": rt
+            "response_time": rt,
         }
 
     def trial_clean_up(self):
+        if P.development_mode:
+            pass
+
         trial_frames = self.opti.export()
 
         for asset in trial_frames.keys():
@@ -223,6 +226,9 @@ class BackHandFrontHand(klibs.Experiment):
             self.optidata[asset] = dt.rbind(self.optidata[asset], frame)
 
     def clean_up(self):
+        if P.development_mode:
+            pass
+
         for asset in self.optidata.keys():
             self.optidata[asset].to_csv(
                 path=f"BackHandFrontHand_{asset}_framedata.csv", append=True

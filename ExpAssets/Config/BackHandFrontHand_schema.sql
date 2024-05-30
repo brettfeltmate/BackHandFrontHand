@@ -56,11 +56,10 @@ CREATE TABLE trials (
     block_num integer not null,
     trial_num integer not null,
     practicing text not null,
-    block_task text not null,
-    block_hand text not null,
+    left_right_hand text not null,
+    palm_back_hand text not null,
     target_loc text not null,
     distractor_loc text not null,
     movement_time text not null,
     response_time text not null,
-    correct text not null
 );

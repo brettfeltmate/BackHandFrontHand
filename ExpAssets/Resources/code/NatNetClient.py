@@ -544,7 +544,11 @@ class NatNetClient:
             try:
                 bytestream, addr = in_socket.recvfrom(recv_buffer_size)
             except (socket.error, socket.herror, socket.gaierror, socket.timeout) as e:
-                if stop() or isinstance(e, socket.timeout) and self.use_multicast:
+                if (
+                    stop()
+                    or isinstance(e, socket.timeout)
+                    and self.settings["use_multicast"]
+                ):
                     print(f"ERROR: command socket access error occurred:\n{e}")
                 if isinstance(e, socket.error):
                     print("shutting down")
@@ -662,7 +666,7 @@ class NatNetClient:
 
     def set_use_multicast(self, use_multicast: bool = True) -> None:
         if not self.settings["is_locked"]:
-            self.use_multicast = use_multicast
+            self.settings["use_multicast"] = use_multicast
 
     def can_change_bitstream_version(self) -> bool:
         return self.settings["can_change_bitstream_version"]
