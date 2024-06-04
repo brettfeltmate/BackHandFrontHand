@@ -8,16 +8,19 @@ import sys
 import klibs
 from klibs import P
 from klibs.KLGraphics import KLDraw as kld
-from klibs.KLGraphics import fill, blit, flip, clear
+from klibs.KLGraphics import fill, blit, flip
 from klibs.KLUserInterface import any_key, ui_request, key_pressed
 from klibs.KLCommunication import message
-from klibs.KLUtilities import hide_mouse_cursor, now, pump
-from klibs.KLTime import CountDown
+from klibs.KLUtilities import hide_mouse_cursor, pump
+from klibs.KLTime import CountDown, Stopwatch
 from klibs.KLAudio import Tone
+from klibs.KLExceptions import TrialException
 
-from random import shuffle, randrange
+from random import shuffle
 
 import datatable as dt
+from pyfirmata import serial
+
 
 # from ExpAssets import *
 from OptiTracker import OptiTracker
@@ -39,17 +42,10 @@ GRUE = [90, 90, 96, 255]
 # sizing constants
 PLACEHOLDER_SIZE_CM = 4
 PLACEHOLDER_BRIM_CM = 1
-PLACEHOLDER_OFFSET_CM = 10
-
-# sizing constants
-PLACEHOLDER_SIZE_CM = 4
-PLACEHOLDER_BRIM_CM = 1
 PLACEHOLDER_OFFSET_CM = 15
 
-
 # timing constants
-OPTIBOOTLAG = 100
-GO_SIGNAL_ONSET = 200
+GO_SIGNAL_ONSET = 300
 RESPONSE_TIMEOUT = 5000
 
 # audio constants
@@ -101,15 +97,21 @@ class BackHandFrontHand(klibs.Experiment):
             "Skeletons": dt.Frame(),
             "AssetMarkers": dt.Frame(),
         }
+        self.board = serial.Serial(port="/dev/cu.usbmodemHIDPC1", baudrate=9600)
 
     def block(self):
         self.hand_side, self.hand_used = self.task_sequence.pop()
 
-        instructions = f"(Full Instrux TBD)\n Knockover targets with the {self.hand_side} of your {self.hand_used} hand."
-        instructions += "\n\nPress any key to begin."
-
+        instructions = "Block Instructions:\n\n"
+        instructions += f"Tipover targets (lit-up dowel) with the {self.hand_side} of your {self.hand_used} hand."
         if P.practicing:
-            instructions += "\n\n(practice block)"
+            instructions += (
+                "\n\n[PRACTICE BLOCK] Press space to begin. Note: Goggles will close"
+            )
+        else:
+            instructions += (
+                "\n\n[TESTING BLOCK]  Press space to begin. Note: Goggles will close"
+            )
 
         fill()
         message(instructions, location=P.screen_c)
@@ -121,6 +123,8 @@ class BackHandFrontHand(klibs.Experiment):
         pass
 
     def trial_prep(self):
+        # shut goggles
+        self.board.write(b"55")
         # extract trial setup
         self.target, self.distractor = self.arrangement.split("_")
 
@@ -136,31 +140,22 @@ class BackHandFrontHand(klibs.Experiment):
         # TODO: close plato
 
         # setup phase
-        self.present_arrangment(trial_prep=True)
+        self.present_arrangment()
 
         while True:
             q = pump(True)
             if key_pressed(key="space", queue=q):
                 break
 
-        # "uncued" phase
-        self.present_arrangment()
-
-        # begin tracking
-        # self.opti.start_client()
-
-        opti_startup = CountDown(OPTIBOOTLAG / 1000)
-
-        while opti_startup.counting():
-            ui_request()
+        # Start polling from opti and begin trial
+        self.opti.start_client()
 
     def trial(self):
+        # open goggles
+        self.board.write(b"56")
         hide_mouse_cursor()
 
-        self.present_arrangment(flag_target=True)
-
-        # TODO: open plato
-
+        # abort & recycle trial following prepotent responses
         while self.evm.before("go_signal"):
             if get_key_state(key="space") == 0:
                 self.evm.reset()
@@ -168,24 +163,22 @@ class BackHandFrontHand(klibs.Experiment):
                 message(text="Please wait for the go-tone.", location=P.screen_c)
                 flip()
 
+                delay = CountDown(1)
+                while delay.counting():
+                    ui_request()
+
+                TrialException(msg="EarlyStart")
+
+        reaction_timer = Stopwatch(start=True)
         self.go_signal.play()
 
         rt = "NA"
-        mt = "NA"
         while self.evm.before("response_timeout"):
-            if get_key_state("space") == 0:
-                continue
+            if get_key_state("space") == 0 and rt == "NA":
+                rt = reaction_timer.elapsed() / 1000
 
-            rt = self.evm.trial_time_ms
-
-            while mt == "NA":
-                q = pump(True)
-                if key_pressed(key="d", queue=q):
-                    mt = self.evm.trial_time_ms - rt
-                    break
-            break
-
-        # self.opti.stop_client()
+        # Stop polling opt data
+        self.opti.stop_client()
 
         return {
             "block_num": P.block_number,
@@ -195,12 +188,10 @@ class BackHandFrontHand(klibs.Experiment):
             "palm_back_hand": self.hand_side,
             "target_loc": self.target_loc,
             "distractor_loc": self.distractor_loc,
-            "movement_time": mt,
             "response_time": rt,
         }
 
     def trial_clean_up(self):
-        return
         trial_frames = self.opti.export()
 
         for asset in trial_frames.keys():
@@ -224,13 +215,12 @@ class BackHandFrontHand(klibs.Experiment):
             self.optidata[asset] = dt.rbind(self.optidata[asset], frame)
 
     def clean_up(self):
-        return
         for asset in self.optidata.keys():
             self.optidata[asset].to_csv(
                 path=f"BackHandFrontHand_{asset}_framedata.csv", append=True
             )
 
-    def present_arrangment(self, trial_prep=False, flag_target=False):
+    def present_arrangment(self):
         fill()
 
         blit(
@@ -239,24 +229,10 @@ class BackHandFrontHand(klibs.Experiment):
             location=self.locs[self.distractor_loc],
         )
 
-        if flag_target:
-            blit(
-                self.placeholders[TARGET],
-                registration=5,
-                location=self.locs[self.target_loc],
-            )
-
-        else:
-            blit(
-                self.placeholders[DISTRACTOR],
-                registration=5,
-                location=self.locs[self.target_loc],
-            )
-            if trial_prep:
-                message(
-                    "Setup props.\nWhen ready, press & hold down spacebar.\nWait until go-tone before acting.",
-                    location=[P.screen_c[0] // 3, P.screen_c[1] // 3],
-                    registration=1,
-                )
+        blit(
+            self.placeholders[TARGET],
+            registration=5,
+            location=self.locs[self.target_loc],
+        )
 
         flip()
