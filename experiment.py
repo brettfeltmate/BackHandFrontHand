@@ -46,7 +46,7 @@ PLACEHOLDER_OFFSET_CM = 15
 
 # timing constants
 GO_SIGNAL_ONSET = 300
-RESPONSE_TIMEOUT = 5000
+RESPONSE_TIMEOUT = 2000
 
 # audio constants
 TONE_DURATION = 50
@@ -87,7 +87,11 @@ class BackHandFrontHand(klibs.Experiment):
 
         shuffle(self.task_sequence)
 
-        self.opti = OptiTracker()
+        if P.run_practice_blocks:
+            self.insert_practice_block([1,3,5,7], trial_counts=P.trials_per_practice_block)
+            self.task_sequence = [block for block in self.task_sequence for _ in range(2)]
+
+        # self.opti = OptiTracker()
 
         self.optidata = {
             "Prefix": dt.Frame(),
@@ -97,9 +101,11 @@ class BackHandFrontHand(klibs.Experiment):
             "Skeletons": dt.Frame(),
             "AssetMarkers": dt.Frame(),
         }
-        self.board = serial.Serial(port="/dev/cu.usbmodemHIDPC1", baudrate=9600)
+        self.board = serial.Serial(port="COM6", baudrate=9600)
 
     def block(self):
+        self.board.write(b'55')
+
         self.hand_side, self.hand_used = self.task_sequence.pop()
 
         instructions = "Block Instructions:\n\n"
@@ -124,7 +130,7 @@ class BackHandFrontHand(klibs.Experiment):
 
     def trial_prep(self):
         # shut goggles
-        self.board.write(b"55")
+        self.board.write(b"56")
         # extract trial setup
         self.target, self.distractor = self.arrangement.split("_")
 
@@ -132,9 +138,9 @@ class BackHandFrontHand(klibs.Experiment):
         self.distractor_loc, _ = self.distractor.split("-")
 
         # induce slight uncertainty in the reveal time
-        self.evm.add_event(label="go_signal", onset=GO_SIGNAL_ONSET)
+        #self.evm.add_event(label="go_signal", onset=GO_SIGNAL_ONSET)
         self.evm.add_event(
-            label="response_timeout", onset=RESPONSE_TIMEOUT, after="go_signal"
+            label="response_timeout", onset=RESPONSE_TIMEOUT
         )
 
         # TODO: close plato
@@ -148,26 +154,25 @@ class BackHandFrontHand(klibs.Experiment):
                 break
 
         # Start polling from opti and begin trial
-        self.opti.start_client()
+        # self.opti.start_client()
 
     def trial(self):
         # open goggles
-        self.board.write(b"56")
+        self.board.write(b"55")
         hide_mouse_cursor()
 
         # abort & recycle trial following prepotent responses
-        while self.evm.before("go_signal"):
-            if get_key_state(key="space") == 0:
-                self.evm.reset()
-                fill()
-                message(text="Please wait for the go-tone.", location=P.screen_c)
-                flip()
+        # while self.evm.before("go_signal"):
+        #     if get_key_state(key="space") == 0:
+        #         fill()
+        #         message(text="Please wait for the go-tone.", location=P.screen_c)
+        #         flip()
 
-                delay = CountDown(1)
-                while delay.counting():
-                    ui_request()
+        #         delay = CountDown(1)
+        #         while delay.counting():
+        #             ui_request()
 
-                TrialException(msg="EarlyStart")
+        #         TrialException(msg="EarlyStart")
 
         reaction_timer = Stopwatch(start=True)
         self.go_signal.play()
@@ -178,7 +183,7 @@ class BackHandFrontHand(klibs.Experiment):
                 rt = reaction_timer.elapsed() / 1000
 
         # Stop polling opt data
-        self.opti.stop_client()
+        # self.opti.stop_client()
 
         return {
             "block_num": P.block_number,
@@ -192,6 +197,7 @@ class BackHandFrontHand(klibs.Experiment):
         }
 
     def trial_clean_up(self):
+        return
         trial_frames = self.opti.export()
 
         for asset in trial_frames.keys():
@@ -215,6 +221,7 @@ class BackHandFrontHand(klibs.Experiment):
             self.optidata[asset] = dt.rbind(self.optidata[asset], frame)
 
     def clean_up(self):
+        return
         for asset in self.optidata.keys():
             self.optidata[asset].to_csv(
                 path=f"BackHandFrontHand_{asset}_framedata.csv", append=True

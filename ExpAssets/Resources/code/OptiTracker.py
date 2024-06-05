@@ -80,3 +80,7 @@ class OptiTracker:
     def collect_descriptions(self, descriptions: Dict[str, Tuple[Dict, ...]]) -> None:
         for asset_type, asset_description in descriptions.items():
             self.descriptions[asset_type].rbind(dt.Frame(asset_description))
+
+    # Return frame and reset to None
+    def export(self) -> Dict[str, dt.Frame]:
+        return self.frames

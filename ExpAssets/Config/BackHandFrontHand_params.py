@@ -6,7 +6,7 @@
 collect_demographics = True
 manual_demographics_collection = False
 manual_trial_generation = False
-run_practice_blocks = False
+run_practice_blocks = True
 multi_user = False
 view_distance = 57  # in centimeters, 57cm = 1 deg of visual angle per cm of screen
 allow_hidpi = True
@@ -66,3 +66,4 @@ datafile_ext = ".txt"
 #########################################
 # PROJECT-SPECIFIC VARS
 #########################################
+trials_per_practice_block = 6
