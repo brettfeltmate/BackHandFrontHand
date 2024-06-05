@@ -227,7 +227,7 @@ class NatNetClient:
     ) -> int:
         self.frame_data = frameData()
         framedata_bytesize = Int32ul.parse(bytestream)
-        offset =   # Not sure what the first 4 bytes are supposed to be, not documented in the NatNet SDK
+        offset = 4 # Not sure what the first 4 bytes are supposed to be, not documented in the NatNet SDK
 
         unpack_functions = [
             self.__unpack_prefix_data,
