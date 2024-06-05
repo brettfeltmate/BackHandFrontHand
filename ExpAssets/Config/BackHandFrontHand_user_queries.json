@@ -26,10 +26,10 @@
             "active": true
         },
         {
-            "title": "gender",
-            "database_field": "gender",
-            "query": "What is your gender?\nAnswer with: (m)ale, (f)emale, or (n)on-binary",
-            "accepted": ["m", "f", "n"],
+            "title": "sex",
+            "database_field": "sex",
+            "query": "What is your sex?\nAnswer with: (m)ale, (f)emale, or (i)nter-sex",
+            "accepted": ["m", "f", "i"],
             "allow_null": false,
             "format": {
                 "type": "str",

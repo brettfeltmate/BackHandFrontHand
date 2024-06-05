@@ -82,5 +82,9 @@ class OptiTracker:
             self.descriptions[asset_type].rbind(dt.Frame(asset_description))
 
     # Return frame and reset to None
-    def export(self) -> Dict[str, dt.Frame]:
+    def export_frames(self) -> Dict[str, dt.Frame]:
         return self.frames
+
+    # Return frame and reset to None
+    def descexport(self) -> Dict[str, dt.Frame]:
+        return self.descriptions

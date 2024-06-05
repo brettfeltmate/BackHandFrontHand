@@ -2,19 +2,15 @@
 
 __author__ = "Brett Feltmate"
 
-import os
-import sys
-
 import klibs
 from klibs import P
 from klibs.KLGraphics import KLDraw as kld
 from klibs.KLGraphics import fill, blit, flip
-from klibs.KLUserInterface import any_key, ui_request, key_pressed
+from klibs.KLUserInterface import any_key, key_pressed, ui_request
 from klibs.KLCommunication import message
 from klibs.KLUtilities import hide_mouse_cursor, pump
-from klibs.KLTime import CountDown, Stopwatch
+from klibs.KLTime import Stopwatch, CountDown
 from klibs.KLAudio import Tone
-from klibs.KLExceptions import TrialException
 
 from random import shuffle
 
@@ -88,8 +84,12 @@ class BackHandFrontHand(klibs.Experiment):
         shuffle(self.task_sequence)
 
         if P.run_practice_blocks:
-            self.insert_practice_block([1,3,5,7], trial_counts=P.trials_per_practice_block)
-            self.task_sequence = [block for block in self.task_sequence for _ in range(2)]
+            self.insert_practice_block(
+                [1, 3, 5, 7], trial_counts=P.trials_per_practice_block
+            )
+            self.task_sequence = [
+                block for block in self.task_sequence for _ in range(2)
+            ]
 
         # self.opti = OptiTracker()
 
@@ -104,7 +104,7 @@ class BackHandFrontHand(klibs.Experiment):
         self.board = serial.Serial(port="COM6", baudrate=9600)
 
     def block(self):
-        self.board.write(b'55')
+        self.board.write(b"55")
 
         self.hand_side, self.hand_used = self.task_sequence.pop()
 
@@ -138,15 +138,13 @@ class BackHandFrontHand(klibs.Experiment):
         self.distractor_loc, _ = self.distractor.split("-")
 
         # induce slight uncertainty in the reveal time
-        #self.evm.add_event(label="go_signal", onset=GO_SIGNAL_ONSET)
-        self.evm.add_event(
-            label="response_timeout", onset=RESPONSE_TIMEOUT
-        )
+        # self.evm.add_event(label="go_signal", onset=GO_SIGNAL_ONSET)
+        self.evm.add_event(label="response_timeout", onset=RESPONSE_TIMEOUT)
 
         # TODO: close plato
 
         # setup phase
-        self.present_arrangment()
+        self.present_arrangment(phase="setup")
 
         while True:
             q = pump(True)
@@ -154,7 +152,7 @@ class BackHandFrontHand(klibs.Experiment):
                 break
 
         # Start polling from opti and begin trial
-        # self.opti.start_client()
+        self.opti.start_client()
 
     def trial(self):
         # open goggles
@@ -173,6 +171,12 @@ class BackHandFrontHand(klibs.Experiment):
         #             ui_request()
 
         #         TrialException(msg="EarlyStart")
+        #         FIX: errs claiming no 'go_signal' label present
+
+        go_signal_delay = CountDown(0.3)
+
+        while go_signal_delay.counting():
+            ui_request()
 
         reaction_timer = Stopwatch(start=True)
         self.go_signal.play()
@@ -183,7 +187,7 @@ class BackHandFrontHand(klibs.Experiment):
                 rt = reaction_timer.elapsed() / 1000
 
         # Stop polling opt data
-        # self.opti.stop_client()
+        self.opti.stop_client()
 
         return {
             "block_num": P.block_number,
@@ -197,7 +201,6 @@ class BackHandFrontHand(klibs.Experiment):
         }
 
     def trial_clean_up(self):
-        return
         trial_frames = self.opti.export()
 
         for asset in trial_frames.keys():
@@ -210,8 +213,8 @@ class BackHandFrontHand(klibs.Experiment):
                         "practicing": P.practicing,
                         "block_num": P.block_number,
                         "trial_num": P.trial_number,
-                        "hand_side": self.hand_side,
-                        "hand_used": self.hand_used,
+                        "left_right_hand": self.hand_side,
+                        "palm_back_hand": self.hand_used,
                         "target_loc": self.target_loc,
                         "distractor_loc": self.distractor_loc,
                     }
@@ -221,13 +224,12 @@ class BackHandFrontHand(klibs.Experiment):
             self.optidata[asset] = dt.rbind(self.optidata[asset], frame)
 
     def clean_up(self):
-        return
         for asset in self.optidata.keys():
             self.optidata[asset].to_csv(
                 path=f"BackHandFrontHand_{asset}_framedata.csv", append=True
             )
 
-    def present_arrangment(self):
+    def present_arrangment(self, phase="trial"):
         fill()
 
         blit(
@@ -237,7 +239,7 @@ class BackHandFrontHand(klibs.Experiment):
         )
 
         blit(
-            self.placeholders[TARGET],
+            self.placeholders[TARGET if phase == "trial" else DISTRACTOR],
             registration=5,
             location=self.locs[self.target_loc],
         )

@@ -23,6 +23,19 @@ from DescriptionUnpackers import *
 from construct import Int32ul
 from typing import Any, Union, List, Tuple, Callable
 
+def trace( *args ):
+    # uncomment the one you want to use
+    print( "".join(map(str,args)) )
+
+#Used for Data Description functions
+def trace_dd( *args ):
+    # uncomment the one you want to use
+    print( "".join(map(str,args)) )
+
+#Used for MoCap Frame Data functions
+def trace_mf( *args ):
+    # uncomment the one you want to use
+    print( "".join(map(str,args)) )
 
 def get_message_id(bytestream: bytes) -> int:
     message_id = int.from_bytes(bytestream[0:2], byteorder="little")
@@ -213,7 +226,8 @@ class NatNetClient:
         self, unparsed_bytestream: bytes, NatNetStreamVersion: List[int] = None
     ) -> int:
         self.frame_data = frameData()
-        offset = 4  # Not sure what the first 4 bytes are supposed to be, not documented in the NatNet SDK
+        framedata_bytesize = Int32ul.parse(bytestream)
+        offset =   # Not sure what the first 4 bytes are supposed to be, not documented in the NatNet SDK
 
         unpack_functions = [
             self.__unpack_prefix_data,
