@@ -1,0 +1,17 @@
+MachineID: C92F-4FD6
+
+Application License: No Valid License Found
+
+License: Motive Body
+Status: Invalid
+Registered To: Heather Neyedli
+Email: cogmotor@dal.ca
+Device Serial: 476609
+Activated On: January 20, 2023
+Updates & Support Until: January 19, 2024
+License Serial: MBDL1392
+
+
+License files in C:\ProgramData\OptiTrack\License
+-------------------------------------------------
+License_motive_body_initial_476609_MBDL1392_2023-01-20.dat
