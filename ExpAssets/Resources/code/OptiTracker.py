@@ -28,16 +28,16 @@ class OptiTracker:
 
         self.frames = {
             "Prefix": dt.Frame(),
-            "MarkerSet": dt.Frame(),
-            "LabeledMarker": dt.Frame(),
-            "LegacyMarkerSet": dt.Frame(),
-            "RigidBody": dt.Frame(),
-            "Skeleton": dt.Frame(),
-            "AssetRigidBody": dt.Frame(),
-            "AssetMarker": dt.Frame(),
-            "ForcePlate": dt.Frame(),
-            "Device": dt.Frame(),
-            "Suffix": dt.Frame(),
+            "MarkerSets": dt.Frame(),
+            # "LabeledMarkers": dt.Frame(),
+            "LegacyMarkerSets": dt.Frame(),
+            "RigidBodies": dt.Frame(),
+            "Skeletons": dt.Frame(),
+            # "AssetRigidBodies": dt.Frame(),
+            "AssetMarkers": dt.Frame(),
+            # "ForcePlates": dt.Frame(),
+            # "Devices": dt.Frame(),
+            # "Suffix": dt.Frame(),
         }
 
         self.descriptions = {

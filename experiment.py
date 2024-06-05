@@ -91,12 +91,12 @@ class BackHandFrontHand(klibs.Experiment):
                 block for block in self.task_sequence for _ in range(2)
             ]
 
-        # self.opti = OptiTracker()
+        self.opti = OptiTracker()
 
         self.optidata = {
             "Prefix": dt.Frame(),
             "MarkerSets": dt.Frame(),
-            "LegacyMarkerSet": dt.Frame(),
+            "LegacyMarkerSets": dt.Frame(),
             "RigidBodies": dt.Frame(),
             "Skeletons": dt.Frame(),
             "AssetMarkers": dt.Frame(),
@@ -155,6 +155,7 @@ class BackHandFrontHand(klibs.Experiment):
         self.opti.start_client()
 
     def trial(self):
+        self.present_arrangment()
         # open goggles
         self.board.write(b"55")
         hide_mouse_cursor()
@@ -201,7 +202,7 @@ class BackHandFrontHand(klibs.Experiment):
         }
 
     def trial_clean_up(self):
-        trial_frames = self.opti.export()
+        trial_frames = self.opti.export_frames()
 
         for asset in trial_frames.keys():
             frame = trial_frames[asset]
@@ -237,6 +238,7 @@ class BackHandFrontHand(klibs.Experiment):
             registration=5,
             location=self.locs[self.distractor_loc],
         )
+
 
         blit(
             self.placeholders[TARGET if phase == "trial" else DISTRACTOR],

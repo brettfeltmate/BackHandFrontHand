@@ -130,7 +130,7 @@ class NatNetClient:
         legacy_marker_set = legacyMarkerSetData(
             unparsed_bytestream, NatNetStreamVersion
         )
-        self.frame_data.log("LegacyMarkerSet", legacy_marker_set.data())
+        self.frame_data.log("LegacyMarkerSets", legacy_marker_set.data())
 
         return legacy_marker_set.relative_offset()
 
@@ -143,7 +143,7 @@ class NatNetClient:
         labeled_marker_set = labeledMarkerSetData(
             unparsed_bytestream, NatNetStreamVersion
         )
-        self.frame_data.log("LabeledMarkerSet", labeled_marker_set.data())
+        self.frame_data.log("LabeledMarkerSets", labeled_marker_set.data())
 
         return labeled_marker_set.relative_offset()
 
@@ -188,7 +188,7 @@ class NatNetClient:
 
         assets = assetsData(unparsed_bytestream, NatNetStreamVersion)
         self.frame_data.log("AssetRigidBodies", assets.data("AssetRigidBodies"))
-        self.frame_data.log("AssetMarker", assets.data("AssetMarkers"))
+        self.frame_data.log("AssetMarkers", assets.data("AssetMarkers"))
 
         return assets.relative_offset()
 
@@ -226,7 +226,7 @@ class NatNetClient:
         self, unparsed_bytestream: bytes, NatNetStreamVersion: List[int] = None
     ) -> int:
         self.frame_data = frameData()
-        framedata_bytesize = Int32ul.parse(bytestream)
+        framedata_bytesize = Int32ul.parse(unparsed_bytestream)
         offset = 4 # Not sure what the first 4 bytes are supposed to be, not documented in the NatNet SDK
 
         unpack_functions = [
