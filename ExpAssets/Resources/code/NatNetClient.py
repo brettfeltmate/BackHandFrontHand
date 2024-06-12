@@ -23,19 +23,23 @@ from DescriptionUnpackers import *
 from construct import Int32ul
 from typing import Any, Union, List, Tuple, Callable
 
-def trace( *args ):
-    # uncomment the one you want to use
-    print( "".join(map(str,args)) )
 
-#Used for Data Description functions
-def trace_dd( *args ):
+def trace(*args):
     # uncomment the one you want to use
-    print( "".join(map(str,args)) )
+    print("".join(map(str, args)))
 
-#Used for MoCap Frame Data functions
-def trace_mf( *args ):
+
+# Used for Data Description functions
+def trace_dd(*args):
     # uncomment the one you want to use
-    print( "".join(map(str,args)) )
+    print("".join(map(str, args)))
+
+
+# Used for MoCap Frame Data functions
+def trace_mf(*args):
+    # uncomment the one you want to use
+    print("".join(map(str, args)))
+
 
 def get_message_id(bytestream: bytes) -> int:
     message_id = int.from_bytes(bytestream[0:2], byteorder="little")
@@ -227,7 +231,7 @@ class NatNetClient:
     ) -> int:
         self.frame_data = frameData()
         framedata_bytesize = Int32ul.parse(unparsed_bytestream)
-        offset = 4 # Not sure what the first 4 bytes are supposed to be, not documented in the NatNet SDK
+        offset = 4  # Not sure what the first 4 bytes are supposed to be, not documented in the NatNet SDK
 
         unpack_functions = [
             self.__unpack_prefix_data,
@@ -630,14 +634,10 @@ class NatNetClient:
         # skip the 4 bytes for message ID and packet_size
         offset = 4
         if message_id == self.NAT_FRAMEOFDATA:
-            offset += self.__unpack_frame_data(
-                bytestream, offset, NatNetStreamVersion=None
-            )
+            offset += self.__unpack_frame_data(bytestream[offset:])
 
         elif message_id == self.NAT_MODELDEF:
-            offset += self.__unpack_descriptions(
-                bytestream, offset, NatNetStreamVersion=None
-            )
+            offset += self.__unpack_descriptions(bytestream[offset:])
 
         elif message_id == self.NAT_SERVERINFO:
             trace(
