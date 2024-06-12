@@ -30,11 +30,11 @@ class OptiTracker:
             "Prefix": dt.Frame(),
             "MarkerSets": dt.Frame(),
             # "LabeledMarkers": dt.Frame(),
-            "LegacyMarkerSets": dt.Frame(),
+            #"LegacyMarkerSets": dt.Frame(),
             "RigidBodies": dt.Frame(),
-            "Skeletons": dt.Frame(),
+            #"Skeletons": dt.Frame(),
             # "AssetRigidBodies": dt.Frame(),
-            "AssetMarkers": dt.Frame(),
+            #"AssetMarkers": dt.Frame(),
             # "ForcePlates": dt.Frame(),
             # "Devices": dt.Frame(),
             # "Suffix": dt.Frame(),
@@ -74,8 +74,11 @@ class OptiTracker:
     def collect_frame(self, frame_data: Dict[str, List[Dict]]) -> None:
         # HACK: clumsy nesting
         for asset_type in frame_data.keys():
-            for asset_data in frame_data[asset_type]:
-                self.frames[asset_type].rbind(dt.Frame(asset_data))
+            print(f"asset_type: {asset_type}\n")
+            if asset_type in self.frames.keys():
+                for asset_data in frame_data[asset_type]:
+                    print(f"asset_data:\n{asset_data}")
+                    self.frames[asset_type].rbind(dt.Frame(asset_data))
 
     def collect_descriptions(self, descriptions: Dict[str, Tuple[Dict, ...]]) -> None:
         for asset_type, asset_description in descriptions.items():
