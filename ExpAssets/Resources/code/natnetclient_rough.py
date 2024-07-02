@@ -58,7 +58,7 @@ class Parser(object):
             'count': Int32ul,
             'prefix': Struct('frame' / Int32ul),
             'marker': Struct(
-                'pos_x' / Int32ul, 'pos_y' / Int32ul, 'pos_z' / Int32ul
+                'pos_x' / Float32l, 'pos_y' / Float32l, 'pos_z' / Float32l
             ),
             'rigid_body': Struct(
                 'asset_ID' / Int32ul,

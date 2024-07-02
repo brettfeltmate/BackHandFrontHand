@@ -98,7 +98,7 @@ class BackHandFrontHand(klibs.Experiment):
             ]
         self.nnc = NatNetClient()
         self.nnc.markers_listener = self.marker_set_listener
-        self.nnc.rigid_bodies_listener = self.rigid_body_listener
+        self.nnc.rigid_bodies_listener = self.rigid_bodies_listener
 
         self.board = serial.Serial(port='COM6', baudrate=9600)
 
@@ -217,7 +217,7 @@ class BackHandFrontHand(klibs.Experiment):
             'participant_id': P.participant_id,
         }
 
-    def rigid_body_listener(self, rigid_body):
+    def rigid_bodies_listener(self, rigid_body):
         trial_details = self.get_trial_properties()
 
         fname = f'P{P.p_id}_rigid_body_data.csv'
@@ -225,6 +225,10 @@ class BackHandFrontHand(klibs.Experiment):
         file_exists = os.path.exists(fname)
 
         rigid_body.update(trial_details)
+
+        print('\n==================\n')
+        print(rigid_body)
+        print('\n==================\n')
 
         with open(fname, 'a', newline='') as csvfile:
             writer = csv.DictWriter(csvfile, fieldnames=rigid_body.keys())
@@ -242,11 +246,16 @@ class BackHandFrontHand(klibs.Experiment):
         file_exists = os.path.exists(fname)
 
         with open(fname, 'a', newline='') as csvfile:
-            writer = csv.DictWriter(csvfile, fieldnames=marker_set.keys())
-
-            if not file_exists:
-                writer.writeheader()
-
-            for marker in marker_set['marker']:
+            for marker in marker_set['markers']:
                 marker.update(trial_details)
+
+                writer = csv.DictWriter(csvfile, fieldnames=marker.keys())
+
+                if not file_exists:
+                    writer.writeheader()
+
+                print('\n==================\n')
+                print(marker)
+                print('\n==================\n')
+
                 writer.writerow(marker)

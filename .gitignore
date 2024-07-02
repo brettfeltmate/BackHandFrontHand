@@ -8,3 +8,9 @@ ExpAssets/EDF/**
 ExpAssets/.versions/**
 ExpAssets/Local
 ExpAssets/Local/**
+BackHandFrontHand_AssetMarkers_framedata.csv
+BackHandFrontHand_LegacyMarkerSets_framedata.csv
+BackHandFrontHand_MarkerSets_framedata.csv
+BackHandFrontHand_Prefix_framedata.csv
+BackHandFrontHand_RigidBodies_framedata.csv
+BackHandFrontHand_Skeletons_framedata.csv
