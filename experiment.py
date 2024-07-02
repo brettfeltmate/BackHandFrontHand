@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 
-__author__ = "Brett Feltmate"
+__author__ = 'Brett Feltmate'
 
 import klibs
 from klibs import P
@@ -14,22 +14,26 @@ from klibs.KLAudio import Tone
 
 from random import shuffle
 
-import datatable as dt
+import os
+import csv
+
+# import datatable as dt
 from pyfirmata import serial
 
 
 # from ExpAssets import *
-from OptiTracker import OptiTracker
+# from OptiTracker import OptiTracker
+from natnetclient_rough import NatNetClient
 from get_key_state import get_key_state
 
 # i hate typos
-LEFT = "Left"
-RIGHT = "Right"
-CENTRE = "Centre"
-FRONT = "Front"
-BACK = "Back"
-TARGET = "Target"
-DISTRACTOR = "Distractor"
+LEFT = 'Left'
+RIGHT = 'Right'
+CENTRE = 'Centre'
+FRONT = 'Front'
+BACK = 'Back'
+TARGET = 'Target'
+DISTRACTOR = 'Distractor'
 
 # colours
 WHITE = [255, 255, 255, 255]
@@ -46,7 +50,7 @@ RESPONSE_TIMEOUT = 2000
 
 # audio constants
 TONE_DURATION = 50
-TONE_SHAPE = "sine"
+TONE_SHAPE = 'sine'
 TONE_FREQ = 784  # ridin' on yo G5 airplane
 TONE_VOLUME = 0.5
 
@@ -71,7 +75,9 @@ class BackHandFrontHand(klibs.Experiment):
             DISTRACTOR: kld.Annulus(DIAM_PX, BRIM_PX, fill=GRUE),
         }
 
-        self.go_signal = Tone(TONE_DURATION, TONE_SHAPE, TONE_FREQ, TONE_VOLUME)
+        self.go_signal = Tone(
+            TONE_DURATION, TONE_SHAPE, TONE_FREQ, TONE_VOLUME
+        )
 
         self.task_sequence = [
             # which side, of which hand, is to be used
@@ -90,34 +96,33 @@ class BackHandFrontHand(klibs.Experiment):
             self.task_sequence = [
                 block for block in self.task_sequence for _ in range(2)
             ]
+        self.nnc = NatNetClient()
+        self.nnc.markers_listener = self.marker_set_listener
+        self.nnc.rigid_bodies_listener = self.rigid_body_listener
 
-        self.opti = OptiTracker()
-
-        self.optidata = {
-            "Prefix": dt.Frame(),
-            "MarkerSets": dt.Frame(),
-            "LegacyMarkerSets": dt.Frame(),
-            "RigidBodies": dt.Frame(),
-            "Skeletons": dt.Frame(),
-            "AssetMarkers": dt.Frame(),
-        }
-        self.board = serial.Serial(port="COM6", baudrate=9600)
+        # self.opti = OptiTracker()
+        #
+        # self.optidata = {
+        #     'Prefix': dt.Frame(),
+        #     'MarkerSets': dt.Frame(),
+        #     'LegacyMarkerSets': dt.Frame(),
+        #     'RigidBodies': dt.Frame(),
+        #     'Skeletons': dt.Frame(),
+        #     'AssetMarkers': dt.Frame(),
+        # }
+        self.board = serial.Serial(port='COM6', baudrate=9600)
 
     def block(self):
-        self.board.write(b"55")
+        self.board.write(b'55')
 
         self.hand_side, self.hand_used = self.task_sequence.pop()
 
-        instructions = "Block Instructions:\n\n"
-        instructions += f"Tipover targets (lit-up dowel) with the {self.hand_side} of your {self.hand_used} hand."
+        instructions = 'Block Instructions:\n\n'
+        instructions += f'Tipover targets (lit-up dowel) with the {self.hand_side} of your {self.hand_used} hand.'
         if P.practicing:
-            instructions += (
-                "\n\n[PRACTICE BLOCK] Press space to begin. Note: Goggles will close"
-            )
+            instructions += '\n\n[PRACTICE BLOCK] Press space to begin. Note: Goggles will close'
         else:
-            instructions += (
-                "\n\n[TESTING BLOCK]  Press space to begin. Note: Goggles will close"
-            )
+            instructions += '\n\n[TESTING BLOCK]  Press space to begin. Note: Goggles will close'
 
         fill()
         message(instructions, location=P.screen_c)
@@ -130,75 +135,61 @@ class BackHandFrontHand(klibs.Experiment):
 
     def trial_prep(self):
         # shut goggles
-        self.board.write(b"56")
+        self.board.write(b'56')
         # extract trial setup
-        self.target, self.distractor = self.arrangement.split("_")
+        self.target, self.distractor = self.arrangement.split('_')
 
-        self.target_loc, _ = self.target.split("-")
-        self.distractor_loc, _ = self.distractor.split("-")
+        self.target_loc, _ = self.target.split('-')
+        self.distractor_loc, _ = self.distractor.split('-')
 
         # induce slight uncertainty in the reveal time
         # self.evm.add_event(label="go_signal", onset=GO_SIGNAL_ONSET)
-        self.evm.add_event(label="response_timeout", onset=RESPONSE_TIMEOUT)
+        self.evm.add_event(label='response_timeout', onset=RESPONSE_TIMEOUT)
 
         # TODO: close plato
 
         # setup phase
-        self.present_arrangment(phase="setup")
+        self.present_arrangment(phase='setup')
 
         while True:
             q = pump(True)
-            if key_pressed(key="space", queue=q):
+            if key_pressed(key='space', queue=q):
                 break
 
-        # Start polling from opti and begin trial
-        self.opti.start_client()
-
     def trial(self):
+        self.nnc.startup()
+
         self.present_arrangment()
-        # open goggles
-        self.board.write(b"55")
-        hide_mouse_cursor()
-
-        # abort & recycle trial following prepotent responses
-        # while self.evm.before("go_signal"):
-        #     if get_key_state(key="space") == 0:
-        #         fill()
-        #         message(text="Please wait for the go-tone.", location=P.screen_c)
-        #         flip()
-
-        #         delay = CountDown(1)
-        #         while delay.counting():
-        #             ui_request()
-
-        #         TrialException(msg="EarlyStart")
-        #         FIX: errs claiming no 'go_signal' label present
 
         go_signal_delay = CountDown(0.3)
 
         while go_signal_delay.counting():
             ui_request()
 
+        # open goggles
+        self.board.write(b'55')
+        hide_mouse_cursor()
+
         reaction_timer = Stopwatch(start=True)
         self.go_signal.play()
 
-        rt = "NA"
-        while self.evm.before("response_timeout"):
-            if get_key_state("space") == 0 and rt == "NA":
+        rt = 'NA'
+        while self.evm.before('response_timeout'):
+            if get_key_state('space') == 0 and rt == 'NA':
                 rt = reaction_timer.elapsed() / 1000
 
         # Stop polling opt data
-        self.opti.stop_client()
+        self.nnc.shutdown()
 
         return {
-            "block_num": P.block_number,
-            "trial_num": P.trial_number,
-            "practicing": P.practicing,
-            "left_right_hand": self.hand_used,
-            "palm_back_hand": self.hand_side,
-            "target_loc": self.target_loc,
-            "distractor_loc": self.distractor_loc,
-            "response_time": rt,
+            'block_num': P.block_number,
+            'trial_num': P.trial_number,
+            'practicing': P.practicing,
+            'left_right_hand': self.hand_used,
+            'palm_back_hand': self.hand_side,
+            'target_loc': self.target_loc,
+            'distractor_loc': self.distractor_loc,
+            'response_time': rt,
         }
 
     def trial_clean_up(self):
@@ -210,14 +201,14 @@ class BackHandFrontHand(klibs.Experiment):
                 :,
                 dt.update(
                     **{
-                        "participant_id": P.p_id,
-                        "practicing": P.practicing,
-                        "block_num": P.block_number,
-                        "trial_num": P.trial_number,
-                        "left_right_hand": self.hand_side,
-                        "palm_back_hand": self.hand_used,
-                        "target_loc": self.target_loc,
-                        "distractor_loc": self.distractor_loc,
+                        'participant_id': P.p_id,
+                        'practicing': P.practicing,
+                        'block_num': P.block_number,
+                        'trial_num': P.trial_number,
+                        'left_right_hand': self.hand_side,
+                        'palm_back_hand': self.hand_used,
+                        'target_loc': self.target_loc,
+                        'distractor_loc': self.distractor_loc,
                     }
                 ),
             ]
@@ -227,10 +218,10 @@ class BackHandFrontHand(klibs.Experiment):
     def clean_up(self):
         for asset in self.optidata.keys():
             self.optidata[asset].to_csv(
-                path=f"BackHandFrontHand_{asset}_framedata.csv", append=True
+                path=f'BackHandFrontHand_{asset}_framedata.csv', append=True
             )
 
-    def present_arrangment(self, phase="trial"):
+    def present_arrangment(self, phase='trial'):
         fill()
 
         blit(
@@ -239,11 +230,56 @@ class BackHandFrontHand(klibs.Experiment):
             location=self.locs[self.distractor_loc],
         )
 
-
         blit(
-            self.placeholders[TARGET if phase == "trial" else DISTRACTOR],
+            self.placeholders[TARGET if phase == 'trial' else DISTRACTOR],
             registration=5,
             location=self.locs[self.target_loc],
         )
 
         flip()
+
+    def get_trial_properties(self):
+        return {
+            'trial_num': P.trial_number,
+            'trial_num': P.trial_number,
+            'practicing': P.practicing,
+            'left_right_hand': self.hand_used,
+            'palm_back_hand': self.hand_side,
+            'target_loc': self.target_loc,
+            'distractor_loc': self.distractor_loc,
+            'participant_id': P.participant_id,
+        }
+
+    def rigid_body_listener(self, rigid_body):
+        trial_details = self.get_trial_properties()
+
+        fname = f"p{P.p_id}_rigid_body_{rigid_body['asset_ID']}_data.csv"
+
+        file_exists = os.path.exists(fname)
+
+        with open(fname, 'a', newline='') as csvfile:
+            writer = csv.DictWriter(csvfile, fieldnames=marker_set.keys())
+
+            if not file_exists:
+                writer.writeheader()
+
+            for marker in marker_set['marker']:
+                marker.update(trial_details)
+                writer.writerow(marker)
+
+    def marker_set_listener(self, marker_set):
+        trial_details = self.get_trial_properties()
+
+        fname = f"P{P.p_id}_{marker_set['label']}_marker_data.csv"
+
+        file_exists = os.path.exists(fname)
+
+        with open(fname, 'a', newline='') as csvfile:
+            writer = csv.DictWriter(csvfile, fieldnames=marker_set.keys())
+
+            if not file_exists:
+                writer.writeheader()
+
+            for marker in marker_set['marker']:
+                marker.update(trial_details)
+                writer.writerow(marker)

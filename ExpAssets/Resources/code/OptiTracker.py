@@ -30,11 +30,11 @@ class OptiTracker:
             "Prefix": dt.Frame(),
             "MarkerSets": dt.Frame(),
             # "LabeledMarkers": dt.Frame(),
-            #"LegacyMarkerSets": dt.Frame(),
+            # "LegacyMarkerSets": dt.Frame(),
             "RigidBodies": dt.Frame(),
-            #"Skeletons": dt.Frame(),
+            # "Skeletons": dt.Frame(),
             # "AssetRigidBodies": dt.Frame(),
-            #"AssetMarkers": dt.Frame(),
+            # "AssetMarkers": dt.Frame(),
             # "ForcePlates": dt.Frame(),
             # "Devices": dt.Frame(),
             # "Suffix": dt.Frame(),
@@ -72,12 +72,14 @@ class OptiTracker:
     # streamdata collection callbacks
 
     def collect_frame(self, frame_data: Dict[str, List[Dict]]) -> None:
-        # HACK: clumsy nesting
+        #FIXME: column mismatch? (says 2 orig, 10 supplied)
+        #NOTE: orig is def frame prefix data...
+        #FIXME: why is data being duped?!?!
+        #NOTE: swear to god if these are the same bug...
+        #HACK: Me. I'm the hack.
         for asset_type in frame_data.keys():
-            print(f"asset_type: {asset_type}\n")
-            if asset_type in self.frames.keys():
-                for asset_data in frame_data[asset_type]:
-                    print(f"asset_data:\n{asset_data}")
+            for asset_data in frame_data[asset_type]:
+                print(f"asset_data:\n{asset_data}")
                     self.frames[asset_type].rbind(dt.Frame(asset_data))
 
     def collect_descriptions(self, descriptions: Dict[str, Tuple[Dict, ...]]) -> None:

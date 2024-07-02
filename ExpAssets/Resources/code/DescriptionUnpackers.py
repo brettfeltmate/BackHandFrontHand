@@ -10,9 +10,9 @@ class descriptionUnpacker:
     def __init__(
         self,
         bytestream: bytes = None,
-        NatNetStreamVersion: List[int] = None,
+        stream_version: List[int] = None,
     ) -> None:
-        self.natnet_version = NatNetStreamVersion  # Determines which structure to use
+        self.natnet_version = stream_version  # Determines which structure to use
         self._structure = self._get_structure()  # Asset specific Construct Struct
         self._description = None  # To store parsed description
 
@@ -65,9 +65,9 @@ class markerSetDescription(descriptionUnpacker):
     def __init__(
         self,
         bytestream: bytes = None,
-        NatNetStreamVersion: List[int] = None,
+        stream_version: List[int] = None,
     ) -> None:
-        super().__init__(bytestream, NatNetStreamVersion)
+        super().__init__(bytestream, stream_version)
 
     def export(self) -> Tuple[Dict, ...]:
         return [dict(list(marker.items())[1:]) for marker in self._description.children]
@@ -78,9 +78,9 @@ class rigidBodyDescription(descriptionUnpacker):
     def __init__(
         self,
         bytestream: bytes = None,
-        NatNetStreamVersion: List[int] = None,
+        stream_version: List[int] = None,
     ) -> None:
-        super().__init__(bytestream, NatNetStreamVersion)
+        super().__init__(bytestream, stream_version)
 
     def export(self) -> Tuple[Dict, ...]:
         return [
@@ -94,9 +94,9 @@ class skeletonDescription(descriptionUnpacker):
     def __init__(
         self,
         bytestream: bytes = None,
-        NatNetStreamVersion: List[int] = None,
+        stream_version: List[int] = None,
     ) -> None:
-        super().__init__(bytestream, NatNetStreamVersion)
+        super().__init__(bytestream, stream_version)
 
     def export(self) -> Tuple[Dict, ...]:
         return [
@@ -110,9 +110,9 @@ class assetDescription(descriptionUnpacker):
     def __init__(
         self,
         bytestream: bytes = None,
-        NatNetStreamVersion: List[int] = None,
+        stream_version: List[int] = None,
     ) -> None:
-        super().__init__(bytestream, NatNetStreamVersion)
+        super().__init__(bytestream, stream_version)
 
     def export(self, asset_type: str) -> Tuple[Dict, ...]:
         if asset_type == "RigidBodies":
@@ -137,9 +137,9 @@ class forcePlateDescription(descriptionUnpacker):
     def __init__(
         self,
         bytestream: bytes = None,
-        NatNetStreamVersion: List[int] = None,
+        stream_version: List[int] = None,
     ) -> None:
-        super().__init__(bytestream, NatNetStreamVersion)
+        super().__init__(bytestream, stream_version)
 
     def export(self) -> Tuple[Dict, ...]:
         # TODO: Figuring out tidy way of returning matrices is Future Brett's problem
@@ -156,9 +156,9 @@ class deviceDescription(descriptionUnpacker):
     def __init__(
         self,
         bytestream: bytes = None,
-        NatNetStreamVersion: List[int] = None,
+        stream_version: List[int] = None,
     ) -> None:
-        super().__init__(bytestream, NatNetStreamVersion)
+        super().__init__(bytestream, stream_version)
 
     def export(self) -> Tuple[Dict, ...]:
         return [
@@ -172,9 +172,9 @@ class cameraDescription(descriptionUnpacker):
     def __init__(
         self,
         bytestream: bytes = None,
-        NatNetStreamVersion: List[int] = None,
+        stream_version: List[int] = None,
     ) -> None:
-        super().__init__(bytestream, NatNetStreamVersion)
+        super().__init__(bytestream, stream_version)
 
     def export(self) -> Tuple[Dict, ...]:
         return [dict(list(self._description.items())[1:-1])]
