@@ -24,6 +24,11 @@ from typing import Any, Union, List, Tuple, Callable, Container
 from construct import Struct, CString, Int16sl, Int32ul, Float32l
 
 
+def trace(*args):
+    # uncomment the one you want to use
+    print(''.join(map(str, args)))
+
+
 # Used for Data Description functions
 def trace_dd(*args):
     # uncomment the one you want to use
@@ -166,17 +171,17 @@ class NatNetClient:
 
         # TODO: Pointer() might aide skipping
         for _ in range(0, n_marker_sets):
-            marker_set = {'label': '', 'markers': []}
-            set_label = parser.unpack('label')
+            set_label = CString('utf8').parse(parser.data[parser.offset :])
+            parser.seek_ahead(len(set_label) + 1)
 
-            marker_set['label'] = set_label
+            marker_set = {'label': set_label, 'markers': []}
 
             n_markers_in_set = parser.unpack('count')
 
             if self.markers_listener is not None:
                 for _ in range(n_markers_in_set):
                     marker = parser.unpack('marker')
-                    marker.update(prefix)
+                    marker['frame'] = prefix['frame']
                     marker_set['markers'].append(marker)
 
                 self.markers_listener(marker_set)
@@ -191,7 +196,7 @@ class NatNetClient:
 
             for _ in range(n_rigid_bodies):
                 rigid_body = parser.unpack('rigid_body')
-                rigid_body.update(prefix)
+                rigid_body['frame'] = prefix['frame']
                 self.rigid_bodies_listener(rigid_body)
         else:
             parser.seek_ahead(parser.sizeof('rigid_body', n_rigid_bodies))
@@ -417,7 +422,7 @@ class NatNetClient:
         return offset + 264
 
     # For local use; updates server bitstream version
-    def __unpack_bitstream_info(self, bytestream: bytes) -> list[int]:
+    def __unpack_bitstream_info(self, bytestream: bytes) -> list[str]:
         nn_version = []
         inString = bytestream.decode('utf-8')
         messageList = inString.split(',')
@@ -438,7 +443,7 @@ class NatNetClient:
         while not stop():
             # Block for input
             try:
-                bytestream, addr = in_socket.recvfrom(recv_buffer_size)
+                bytestream, _ = in_socket.recvfrom(recv_buffer_size)
             except (
                 socket.error,
                 socket.herror,
@@ -489,7 +494,7 @@ class NatNetClient:
         while not stop():
             # Block for input
             try:
-                bytestream, addr = in_socket.recvfrom(recv_buffer_size)
+                bytestream, _ = in_socket.recvfrom(recv_buffer_size)
             except (
                 socket.error,
                 socket.herror,
@@ -541,7 +546,7 @@ class NatNetClient:
             self.NAT_MESSAGESTRING,
         ]:
             offset = self.__handle_response_message(
-                bytestream, offset, packet_size, message_id
+                bytestream[offset:], packet_size, message_id
             )
 
         else:
@@ -575,7 +580,7 @@ class NatNetClient:
     def can_change_bitstream_version(self) -> bool:
         return self.settings['can_change_bitstream_version']
 
-    def set_nat_net_version(self, NatNetRequestedVersion: list) -> None:
+    def set_nat_net_version(self, NatNetRequestedVersion: list) -> int:
         """checks to see if stream version can change, then changes it with position reset"""
         if self.settings['can_change_bitstream_version'] and (
             NatNetRequestedVersion[0:2]

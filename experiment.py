@@ -100,16 +100,6 @@ class BackHandFrontHand(klibs.Experiment):
         self.nnc.markers_listener = self.marker_set_listener
         self.nnc.rigid_bodies_listener = self.rigid_body_listener
 
-        # self.opti = OptiTracker()
-        #
-        # self.optidata = {
-        #     'Prefix': dt.Frame(),
-        #     'MarkerSets': dt.Frame(),
-        #     'LegacyMarkerSets': dt.Frame(),
-        #     'RigidBodies': dt.Frame(),
-        #     'Skeletons': dt.Frame(),
-        #     'AssetMarkers': dt.Frame(),
-        # }
         self.board = serial.Serial(port='COM6', baudrate=9600)
 
     def block(self):
@@ -193,33 +183,10 @@ class BackHandFrontHand(klibs.Experiment):
         }
 
     def trial_clean_up(self):
-        trial_frames = self.opti.export_frames()
-
-        for asset in trial_frames.keys():
-            frame = trial_frames[asset]
-            frame[
-                :,
-                dt.update(
-                    **{
-                        'participant_id': P.p_id,
-                        'practicing': P.practicing,
-                        'block_num': P.block_number,
-                        'trial_num': P.trial_number,
-                        'left_right_hand': self.hand_side,
-                        'palm_back_hand': self.hand_used,
-                        'target_loc': self.target_loc,
-                        'distractor_loc': self.distractor_loc,
-                    }
-                ),
-            ]
-
-            self.optidata[asset] = dt.rbind(self.optidata[asset], frame)
+        pass
 
     def clean_up(self):
-        for asset in self.optidata.keys():
-            self.optidata[asset].to_csv(
-                path=f'BackHandFrontHand_{asset}_framedata.csv', append=True
-            )
+        pass
 
     def present_arrangment(self, phase='trial'):
         fill()
@@ -253,19 +220,19 @@ class BackHandFrontHand(klibs.Experiment):
     def rigid_body_listener(self, rigid_body):
         trial_details = self.get_trial_properties()
 
-        fname = f"p{P.p_id}_rigid_body_{rigid_body['asset_ID']}_data.csv"
+        fname = f'P{P.p_id}_rigid_body_data.csv'
 
         file_exists = os.path.exists(fname)
 
+        rigid_body.update(trial_details)
+
         with open(fname, 'a', newline='') as csvfile:
-            writer = csv.DictWriter(csvfile, fieldnames=marker_set.keys())
+            writer = csv.DictWriter(csvfile, fieldnames=rigid_body.keys())
 
             if not file_exists:
                 writer.writeheader()
 
-            for marker in marker_set['marker']:
-                marker.update(trial_details)
-                writer.writerow(marker)
+            writer.writerow(rigid_body)
 
     def marker_set_listener(self, marker_set):
         trial_details = self.get_trial_properties()
