@@ -208,7 +208,7 @@ class BackHandFrontHand(klibs.Experiment):
     def get_trial_properties(self):
         return {
             'trial_num': P.trial_number,
-            'trial_num': P.trial_number,
+            'block_num': P.block_number,
             'practicing': P.practicing,
             'left_right_hand': self.hand_used,
             'palm_back_hand': self.hand_side,
@@ -220,15 +220,11 @@ class BackHandFrontHand(klibs.Experiment):
     def rigid_bodies_listener(self, rigid_body):
         trial_details = self.get_trial_properties()
 
-        fname = f'P{P.p_id}_rigid_body_data.csv'
+        fname = f'OptiData/rigid_bodies/P{P.p_id}_rigid_body_data.csv'
 
         file_exists = os.path.exists(fname)
 
         rigid_body.update(trial_details)
-
-        print('\n==================\n')
-        print(rigid_body)
-        print('\n==================\n')
 
         with open(fname, 'a', newline='') as csvfile:
             writer = csv.DictWriter(csvfile, fieldnames=rigid_body.keys())
@@ -241,7 +237,7 @@ class BackHandFrontHand(klibs.Experiment):
     def marker_set_listener(self, marker_set):
         trial_details = self.get_trial_properties()
 
-        fname = f"P{P.p_id}_{marker_set['label']}_marker_data.csv"
+        fname = f"OptiData/marker_sets/P{P.p_id}_{marker_set['label']}_marker_data.csv"
 
         file_exists = os.path.exists(fname)
 
@@ -253,9 +249,5 @@ class BackHandFrontHand(klibs.Experiment):
 
                 if not file_exists:
                     writer.writeheader()
-
-                print('\n==================\n')
-                print(marker)
-                print('\n==================\n')
 
                 writer.writerow(marker)
