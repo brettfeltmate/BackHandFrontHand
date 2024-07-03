@@ -120,11 +120,15 @@ class BackHandFrontHand(klibs.Experiment):
         else:
             self.block_dir += '/testing'
 
+        if not os.path.exists(self.block_dir):
+            os.mkdir(self.block_dir)
+
         self.block_dir += (
-            f'/Block{P.block_number}_{self.hand_side}Side_{self.hand_used}Hand'
+            f'/Block{P.block_number}_{self.hand_side}_{self.hand_used}'
         )
 
-        os.mkdir(self.block_dir)
+        if not os.path.exists(self.block_dir):
+            os.mkdir(self.block_dir)
 
         instructions = 'Block Instructions:\n\n'
         instructions += f'Tipover targets (lit-up dowel) with the {self.hand_side} of your {self.hand_used} hand.'
@@ -240,7 +244,9 @@ class BackHandFrontHand(klibs.Experiment):
     def rigid_bodies_listener(self, rigid_body):
         trial_details = self.get_trial_properties()
 
-        fname = f'{self.block_dir}/P{P.p_id}_Block{P.block_number}_Trial{P.trial_number}_rigid_body_data.csv'
+        fname = (
+            f'{self.block_dir}/P{P.p_id}_T{P.trial_number}_rigidbody_data.csv'
+        )
 
         file_exists = os.path.exists(fname)
 
@@ -257,7 +263,7 @@ class BackHandFrontHand(klibs.Experiment):
     def marker_set_listener(self, marker_set):
         trial_details = self.get_trial_properties()
 
-        fname = f"{self.block_dir}/P{P.p_id}_Block{P.block_number}_Trial{P.trial_number}_{marker_set['label']}_marker_data.csv"
+        fname = f"{self.block_dir}/P{P.p_id}_T{P.trial_number}_{marker_set['label']}_markerset_data.csv"
 
         file_exists = os.path.exists(fname)
 
