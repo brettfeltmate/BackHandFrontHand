@@ -57,6 +57,7 @@ TONE_VOLUME = 0.5
 
 class BackHandFrontHand(klibs.Experiment):
     def setup(self):
+
         PX_CM = round(P.ppi / 2.54)
 
         OFFSET = PX_CM * PLACEHOLDER_OFFSET_CM  # centre-to-centre
@@ -102,13 +103,32 @@ class BackHandFrontHand(klibs.Experiment):
 
         self.board = serial.Serial(port='COM6', baudrate=9600)
 
+        if not os.path.exists('OptiData'):
+            os.mkdir('OptiData')
+
+        self.pid_dir = f'OptiData/P{P.p_id}'
+        os.mkdir(self.pid_dir)
+
     def block(self):
         self.board.write(b'55')
 
         self.hand_side, self.hand_used = self.task_sequence.pop()
 
+        self.block_dir = self.pid_dir
+        if P.practicing:
+            self.block_dir += '/practice'
+        else:
+            self.block_dir += '/testing'
+
+        self.block_dir += (
+            f'/Block{P.block_number}_{self.hand_side}Side_{self.hand_used}Hand'
+        )
+
+        os.mkdir(self.block_dir)
+
         instructions = 'Block Instructions:\n\n'
         instructions += f'Tipover targets (lit-up dowel) with the {self.hand_side} of your {self.hand_used} hand.'
+
         if P.practicing:
             instructions += '\n\n[PRACTICE BLOCK] Press space to begin. Note: Goggles will close'
         else:
@@ -220,7 +240,7 @@ class BackHandFrontHand(klibs.Experiment):
     def rigid_bodies_listener(self, rigid_body):
         trial_details = self.get_trial_properties()
 
-        fname = f'OptiData/rigid_bodies/P{P.p_id}_rigid_body_data.csv'
+        fname = f'{self.block_dir}/P{P.p_id}_Block{P.block_number}_Trial{P.trial_number}_rigid_body_data.csv'
 
         file_exists = os.path.exists(fname)
 
@@ -237,7 +257,7 @@ class BackHandFrontHand(klibs.Experiment):
     def marker_set_listener(self, marker_set):
         trial_details = self.get_trial_properties()
 
-        fname = f"OptiData/marker_sets/P{P.p_id}_{marker_set['label']}_marker_data.csv"
+        fname = f"{self.block_dir}/P{P.p_id}_Block{P.block_number}_Trial{P.trial_number}_{marker_set['label']}_marker_data.csv"
 
         file_exists = os.path.exists(fname)
 
