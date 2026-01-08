@@ -55,10 +55,4 @@ CREATE TABLE trials (
     participant_id integer not null references participants(id),
     block_num integer not null,
     trial_num integer not null,
-    practicing text not null,
-    left_right_hand text not null,
-    palm_back_hand text not null,
-    target_loc text not null,
-    distractor_loc text not null,
-    response_time text not null
 );

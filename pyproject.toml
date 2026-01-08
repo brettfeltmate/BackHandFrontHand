@@ -1,0 +1,14 @@
+[project]
+name = "backhandfronthand-rewrite"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.13"
+dependencies = [
+    "construct>=2.10.70",
+    "klibs",
+    "pyfirmata>=1.1.0",
+]
+
+[tool.uv.sources]
+klibs = { git = "https://github.com/a-hurst/klibs" }
