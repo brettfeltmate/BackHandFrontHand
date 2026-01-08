@@ -1,2 +1,0 @@
-_io,asset_ID,pos_x,pos_y,pos_z,rot_w,rot_x,rot_y,rot_z,error,tracking_valid,frame,trial_num,block_num,practicing,left_right_hand,palm_back_hand,target_loc,distractor_loc,participant_id
-<_io.BytesIO object at 0x00000280BE209180>,1054724294,0.06046469509601593,0.2180882841348648,2.802596928649634e-45,1.064986832886861e-43,1.401298464324817e-45,0.42941439151763916,0.10194201022386551,0.2757660150527954,-23410,592008,17,4,False,Right,Front,Right,Centre,51
