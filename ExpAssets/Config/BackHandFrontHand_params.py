@@ -45,7 +45,7 @@ multi_session_project = False
 trials_per_block = 60
 blocks_per_experiment = 4
 table_defaults = {}
-conditions = []
+conditions = ['left', 'right']
 default_condition = None
 
 #########################################
@@ -68,3 +68,26 @@ datafile_ext = '.txt'
 #########################################
 # PROJECT-SPECIFIC VARS
 #########################################
+trials_per_practice_block = 6
+
+placeholder_size_cm = 4
+boundary_radius_cm = 4
+placeholder_brim_cm = 1
+placeholder_offset_cm = 15
+
+# timing constants
+go_signal_onset = [300, 500, 700]
+response_timeout = 2000
+
+# audio constants
+tone_duration = 50
+tone_shape = 'sine'
+tone_freq = 784  # ridin' on yo G5 airplane
+tone_volume = 0.5
+
+plato_open_cmd = b'55'
+plato_close_cmd = b'56'
+arduino_comport = 'COM6'
+baudrate = 9600
+hand_markerset_labels = ['Left', 'Right']
+opti_trial_lead_time = 120
