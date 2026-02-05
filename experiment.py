@@ -237,6 +237,7 @@ class BackHandFrontHand(klibs.Experiment):
             'trial_num': P.trial_number,
             'hand_used': self.task_deets.get('hand_used'),
             'side_used': self.task_deets.get('side_used'),
+            'go_signal_onset': self.task_deets.get('go_signal_onset'),
             'target_loc': self.task_deets.get('target_loc'),
             'distractor_loc': self.task_deets.get('distractor_loc'),
             'response_time': rt,
@@ -393,9 +394,9 @@ class BackHandFrontHand(klibs.Experiment):
             'practicing': P.practicing,
             'hand_used': self.hand_used,
             'side_used': self.side_used,
+            'go_signal_onset': go_signal_onset,
             'target_loc': target_loc,
             'distractor_loc': distractor_loc,
-            'go_signal_onset': go_signal_onset,
         }
 
     def _add_trial_header_info(self, filepath, trial_info):
