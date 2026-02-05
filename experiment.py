@@ -7,8 +7,9 @@ from klibs import P
 
 from klibs.KLConstants import STROKE_CENTER
 from klibs.KLGraphics import KLDraw as kld
-from klibs.KLGraphics import fill, flip
-from klibs.KLUserInterface import smart_sleep, any_key, hide_mouse_cursor
+from klibs.KLGraphics import fill, flip, clear, blit
+from klibs.KLUserInterface import smart_sleep, any_key, pump, key_pressed
+from klibs.KLUtilities import hide_mouse_cursor
 from klibs.KLCommunication import message
 from klibs.KLAudio import Tone
 from klibs.KLExceptions import TrialException
@@ -70,7 +71,7 @@ class BackHandFrontHand(klibs.Experiment):
         self.nnc.markers_listener = self._marker_set_listener
 
         # plato goggles controller
-        self.goggles = PlatoGoggles(comport=P.arduino_comport, baudrate=P.baudrate)  # type: ignore
+        self.plato = PlatoGoggles(comport=P.arduino_comport, baudrate=P.baudrate)  # type: ignore
 
         self.locs = {
             LEFT: (P.screen_c[0] - offset, P.screen_c[1]),
@@ -98,7 +99,9 @@ class BackHandFrontHand(klibs.Experiment):
         sides = [BACK, FRONT]
         shuffle(sides)
 
-        self.task_sequence = [[hand, side] for hand in hands for side in sides]
+        self.task_sequence = [
+            [hand, side] for hand in P.conditions for side in sides
+        ]
 
         if P.run_practice_blocks:
             self.insert_practice_block(
@@ -117,7 +120,7 @@ class BackHandFrontHand(klibs.Experiment):
             self._ensure_dir_exists(os.path.join(participant_dir, 'practice'))
 
     def block(self):
-        self.goggles.open()
+        self.plato.open()
         try:
             self.hand_used, self.side_used = self.task_sequence[
                 P.block_number - 1
@@ -148,7 +151,7 @@ class BackHandFrontHand(klibs.Experiment):
         pass
 
     def trial_prep(self):
-        self.goggles.close()
+        self.plato.close()
 
         self.trial_deets = self._get_trial_info()
 
@@ -175,7 +178,7 @@ class BackHandFrontHand(klibs.Experiment):
         )
         self.evm.add_event(
             label='response_timeout',
-            onset=P.response_timeout,
+            onset=P.response_timeout,  # type: ignore[known-attribute]
             after='go_signal',
         )
 
@@ -216,12 +219,12 @@ class BackHandFrontHand(klibs.Experiment):
                 if get_key_state('space') == 0:
                     self._abort_trial(PREMATURE_REACH)
 
-        go_signal_onset = self.evm.trial_time_ms()
+        go_signal_onset = self.evm.trial_time_ms
         self.go_signal.play()
 
         while self.evm.before('response_timeout') and obj_tipped is None:
             if get_key_state('space') == 0:
-                rt = self.evm.trial_time_ms() - go_signal_onset
+                rt = self.evm.trial_time_ms - go_signal_onset
 
             hand_pos = self._get_hand_pos()
 
@@ -235,11 +238,11 @@ class BackHandFrontHand(klibs.Experiment):
         return {
             'block_num': P.block_number,
             'trial_num': P.trial_number,
-            'hand_used': self.task_deets.get('hand_used'),
-            'side_used': self.task_deets.get('side_used'),
-            'go_signal_onset': self.task_deets.get('go_signal_onset'),
-            'target_loc': self.task_deets.get('target_loc'),
-            'distractor_loc': self.task_deets.get('distractor_loc'),
+            'hand_used': self.trial_deets.get('hand_used'),
+            'side_used': self.trial_deets.get('side_used'),
+            'go_signal_onset': self.trial_deets.get('go_signal_onset'),
+            'target_loc': self.trial_deets.get('target_loc'),
+            'distractor_loc': self.trial_deets.get('distractor_loc'),
             'response_time': rt,
             'object_tipped': obj_tipped,
         }
@@ -253,9 +256,9 @@ class BackHandFrontHand(klibs.Experiment):
         fill()
         message(
             'Experiment completed; Press any key to quit to desktop',
-            location = P.screen_c,
-            registration = 5,
-            blit_txt = True
+            location=P.screen_c,
+            registration=5,
+            blit_txt=True,
         )
         flip()
 
@@ -267,22 +270,22 @@ class BackHandFrontHand(klibs.Experiment):
         if prep:
             message(
                 'Place objects in rings.\nWhen ready, instruct participant to press and hold spacebar.',
-                location = (P.screen_c[0], P.screen_y // 4)
-                registration = 3,
-                blit_txt = True
+                location=(P.screen_c[0], P.screen_y // 4),  # type: ignore[unsupported-operator]
+                registration=3,
+                blit_txt=True,
             )
 
         for obj in [DISTRACTOR, TARGET]:
             blit(
                 self.placeholders[obj],
-                registraction = 5,
-                location = self.locs[obj]
+                registration=5,
+                location=self.locs[obj],
             )
 
         flip()
 
     def _get_hand_pos(self):
-        hand_marker = self.ot.position()
+        markers = self.ot.position()
 
         hand_pos = {
             axis: markers[axis][0].item() * self.px_cm
@@ -299,7 +302,7 @@ class BackHandFrontHand(klibs.Experiment):
             REACH_TIMEOUT: 'Too slow!',
         }
 
-        self.goggles.open()
+        self.plato.open()
 
         self.nnc.shutdown()
 
