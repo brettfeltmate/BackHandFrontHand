@@ -89,5 +89,6 @@ plato_open_cmd = b'55'
 plato_close_cmd = b'56'
 arduino_comport = 'COM6'
 baudrate = 9600
-hand_markerset_labels = ['Left', 'Right']
+hand_markerset_labels = ['left', 'right']
 opti_trial_lead_time = 120
+opti_data_dir = 'OptiData'
