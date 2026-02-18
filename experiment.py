@@ -111,6 +111,7 @@ class BackHandFrontHand(klibs.Experiment):
                 block for block in self.task_sequence for _ in range(2)
             ]
 
+        # FIX: not defined in params
         self._ensure_dir_exists(P.opti_data_dir)  # type: ignore[known-attribute]
         participant_dir = self._get_participant_base_dir()
         self._ensure_dir_exists(participant_dir)
