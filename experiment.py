@@ -276,12 +276,16 @@ class BackHandFrontHand(klibs.Experiment):
                 blit_txt=True,
             )
 
-        for obj in [DISTRACTOR, TARGET]:
-            blit(
-                self.placeholders[obj],
-                registration=5,
-                location=self.locs[obj],
-            )
+        blit(
+            self.placeholders[TARGET],
+            registration=5,
+            location=self.target_loc,
+        )
+        blit(
+            self.placeholders[DISTRACTOR],
+            registration=5,
+            location=self.distractor_loc,
+        )
 
         flip()
 
