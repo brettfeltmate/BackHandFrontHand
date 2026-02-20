@@ -156,19 +156,19 @@ class BackHandFrontHand(klibs.Experiment):
 
         self.trial_deets = self._get_trial_info()
 
-        self.target_loc = self.trial_deets.get('target_loc')
-        self.distractor_loc = self.trial_deets.get('distractor_loc')
+        self.target_loc = self.locs[self.trial_deets.get('target_loc')]
+        self.distractor_loc = self.locs[self.trial_deets.get('distractor_loc')]
 
         self.bounds = BoundarySet(
             boundaries=[
                 CircleBoundary(
                     TARGET,
-                    self.trial_deets.get('target_loc'),
+                    self.target_loc,
                     P.boundary_radius_cm * self.px_cm,  # type: ignore[attr]
                 ),
                 CircleBoundary(
                     DISTRACTOR,
-                    self.trial_deets.get('distractor_loc'),
+                    self.distractor_loc,
                     P.boundary_radius_cm * self.px_cm,  # type: ignore[attr]
                 ),
             ]
