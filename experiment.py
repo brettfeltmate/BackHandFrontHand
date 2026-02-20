@@ -133,6 +133,7 @@ class BackHandFrontHand(klibs.Experiment):
 
         self.participant_dir = self._get_participant_base_dir()
         self.block_dir = self._get_block_dir_path()
+        self._ensure_dir_exists(self.block_dir)
 
         instructions = 'Block Instructions:\n\n'
         instructions += f'Tipover targets (lit-up dowel) with the {self.side_used} of your {self.hand_used} hand.'
