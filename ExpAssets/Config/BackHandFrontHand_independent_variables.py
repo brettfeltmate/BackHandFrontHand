@@ -3,12 +3,12 @@ from klibs.KLStructure import FactorSet
 exp_factors = FactorSet(
     {
         'arrangement': (
-            'Left-Target_Right-Distractor',
-            'Left-Target_Centre-Distractor',
-            'Right-Target_Left-Distractor',
-            'Right-Target_Centre-Distractor',
-            'Centre-Target_Right-Distractor',
-            'Centre-Target_Left-Distractor',
+            'left-target_right-distractor',
+            'left-target_centre-distractor',
+            'right-target_left-distractor',
+            'right-target_centre-distractor',
+            'centre-target_right-distractor',
+            'centre-target_left-distractor',
         )
     }
 )
