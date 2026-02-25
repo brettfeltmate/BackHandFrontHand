@@ -224,17 +224,17 @@ class BackHandFrontHand(klibs.Experiment):
         # ensure some data exists before beginning trial
         smart_sleep(P.opti_trial_lead_time)  # type: ignore[known-attribute]
 
-        if not os.path.exists(self.ot.data_dir):
-            raise FileNotFoundError(
-                f'OptiTracker data directory not found: {self.ot.data_dir}. Check OptiTracker setup and trial preparation.'
-            )
-
         self.draw()
 
         self.plato.open()
 
     def trial(self):
         hide_mouse_cursor()
+
+        if not os.path.exists(self.ot.data_dir):
+            raise FileNotFoundError(
+                f'OptiTracker data directory not found: {self.ot.data_dir}. Check OptiTracker setup and trial preparation.'
+            )
 
         rt = None
         obj_tipped = None
@@ -356,6 +356,12 @@ class BackHandFrontHand(klibs.Experiment):
                 Expected format: {'markers': [{'key1': val1, ...}, ...]}
         """
 
+        print(
+            f'Markerset label: {marker_set.get("label")}'
+        )  # Debug: print the label of the incoming marker set
+        print(
+            f'Hand used: {self.hand_used}'
+        )  # Debug: print the label of the incoming marker set
         if marker_set.get('label') == self.hand_used:  # type: ignore[known-attribute]
             # Append data to trial-specific CSV file
             fname = self.ot.data_dir
