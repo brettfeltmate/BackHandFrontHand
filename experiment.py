@@ -28,8 +28,8 @@ import os
 
 # import datatable as dt
 
-LEFT = 'Left'
-RIGHT = 'Right'
+LEFT = 'left'
+RIGHT = 'right'
 CENTRE = 'Centre'
 TOP = 'Top'
 FRONT = 'Front'
@@ -187,6 +187,8 @@ class BackHandFrontHand(klibs.Experiment):
         )
 
         self.ot.data_dir = self.trial_opti_dir
+        # FIXME: KeyError: 'Right'
+        # self.distractor_loc = self.locs[...
 
         self.bounds = BoundarySet(
             boundaries=[
