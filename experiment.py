@@ -244,14 +244,13 @@ class BackHandFrontHand(klibs.Experiment):
         while self.evm.before('go_signal'):
 
             if get_key_state('space') == 0:
-                if get_key_state('space') == 0:
-                    self._abort_trial(PREMATURE_REACH)
+                self._abort_trial(PREMATURE_REACH)
 
         go_signal_onset = self.evm.trial_time_ms
         self.go_signal.play()
 
         while self.evm.before('response_timeout') and obj_tipped is None:
-            if get_key_state('space') == 0:
+            if get_key_state('space') == 0 and rt is None:
                 rt = self.evm.trial_time_ms - go_signal_onset
 
             hand_pos = self._get_hand_pos()
