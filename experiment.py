@@ -24,7 +24,6 @@ from get_key_state import get_key_state  # type: ignore[import]
 
 from csv import DictWriter
 from random import shuffle, choice
-from datetime import datetime
 import os
 
 # import datatable as dt
@@ -99,9 +98,9 @@ class BackHandFrontHand(klibs.Experiment):
         sides = [BACK, FRONT]
         shuffle(sides)
 
-        self.task_sequence = [
-            [hand, side] for hand in P.conditions for side in sides
-        ]
+        hands = [LEFT, RIGHT] if P.condition == LEFT else [RIGHT, LEFT]  # type: ignore
+
+        self.task_sequence = [[hand, side] for hand in hands for side in sides]
 
         if P.run_practice_blocks:
             self.insert_practice_block(
@@ -111,14 +110,20 @@ class BackHandFrontHand(klibs.Experiment):
                 block for block in self.task_sequence for _ in range(2)
             ]
 
-        # FIX: not defined in params
-        self._ensure_dir_exists(P.opti_data_dir)  # type: ignore[known-attribute]
-        participant_dir = self._get_participant_base_dir()
-        self._ensure_dir_exists(participant_dir)
-        self._ensure_dir_exists(os.path.join(participant_dir, 'testing'))
+        self.participant_dir = os.path.join(
+            P.opti_data_dir,  # type: ignore[known-attribute]
+            f'{P.p_id if not P.development_mode else "DEV"}',
+        )
 
-        if P.run_practice_blocks:
-            self._ensure_dir_exists(os.path.join(participant_dir, 'practice'))
+        if os.path.exists(self.participant_dir):
+            if not P.development_mode:
+                raise FileExistsError(
+                    f'Participant directory already exists: {self.participant_dir}. Please check participant ID or remove existing directory.'
+                )
+            else:
+                os.rmdir(self.participant_dir)
+
+        os.makedirs(self.participant_dir)
 
     def block(self):
         self.plato.open()
@@ -131,9 +136,21 @@ class BackHandFrontHand(klibs.Experiment):
                 f'Block number {P.block_number} exceeds defined task sequence length of {len(self.task_sequence)}.'
             )
 
-        self.participant_dir = self._get_participant_base_dir()
-        self.block_dir = self._get_block_dir_path()
-        self._ensure_dir_exists(self.block_dir)
+        self.block_opti_dir = os.path.join(
+            self.participant_dir,
+            'practice' if P.practicing else 'testing',
+            f'Block_{P.block_number}_{self.hand_used}_{self.side_used}',
+        )
+
+        if os.path.exists(self.block_opti_dir):
+            if not P.development_mode:
+                raise FileExistsError(
+                    f'Block directory already exists: {self.block_opti_dir}. Please check block number or remove existing directory.'
+                )
+            else:
+                os.rmdir(self.block_opti_dir)
+
+        os.makedirs(self.block_opti_dir)
 
         instructions = 'Block Instructions:\n\n'
         instructions += f'Tipover targets (lit-up dowel) with the {self.side_used} of your {self.hand_used} hand.'
@@ -157,8 +174,19 @@ class BackHandFrontHand(klibs.Experiment):
 
         self.trial_deets = self._get_trial_info()
 
-        self.target_loc = self.locs[self.trial_deets.get('target_loc')]
-        self.distractor_loc = self.locs[self.trial_deets.get('distractor_loc')]
+        self.target_loc = self.locs[  # type: ignore[argument]
+            self.trial_deets.get('target_loc')
+        ]
+        self.distractor_loc = self.locs[  # type: ignore[argument]
+            self.trial_deets.get('distractor_loc')
+        ]
+
+        self.trial_opti_dir = os.path.join(
+            self.block_opti_dir,
+            f'Trial_{P.trial_number}_Target_{self.trial_deets.get("target_loc")}_Distractor_{self.trial_deets.get("distractor_loc")}',
+        )
+
+        self.ot.data_dir = self.trial_opti_dir
 
         self.bounds = BoundarySet(
             boundaries=[
@@ -191,19 +219,15 @@ class BackHandFrontHand(klibs.Experiment):
             if key_pressed(key='space', queue=q):
                 break
 
-        self.ot.data_dir = self._get_trial_filename(
-            self.block_dir,
-            P.p_id,
-            P.block_number,
-            P.trial_number,
-        )
-
         self.nnc.startup()  # start marker tracking
 
         # ensure some data exists before beginning trial
         smart_sleep(P.opti_trial_lead_time)  # type: ignore[known-attribute]
 
-        self._validate_trial_data_file(self.ot.data_dir)
+        if not os.path.exists(self.ot.data_dir):
+            raise FileNotFoundError(
+                f'OptiTracker data directory not found: {self.ot.data_dir}. Check OptiTracker setup and trial preparation.'
+            )
 
         self.draw()
 
@@ -332,7 +356,7 @@ class BackHandFrontHand(klibs.Experiment):
                 Expected format: {'markers': [{'key1': val1, ...}, ...]}
         """
 
-        if marker_set.get('label') in P.hand_markerset_labels:  # type: ignore[known-attribute]
+        if marker_set.get('label') == self.hand_used:  # type: ignore[known-attribute]
             # Append data to trial-specific CSV file
             fname = self.ot.data_dir
             header = list(marker_set['markers'][0].keys())
@@ -349,45 +373,6 @@ class BackHandFrontHand(klibs.Experiment):
                 for marker in marker_set.get('markers', None):  # type: ignore[iterable]
                     if marker is not None:
                         writer.writerow(marker)
-
-    def _ensure_dir_exists(self, path):
-        """Create directory if it doesn't exist. Raises exception on failure."""
-        try:
-            os.makedirs(path, exist_ok=True)
-        except OSError as e:
-            raise OSError(f"Failed to create directory '{path}': {e}")
-
-    def _get_participant_base_dir(self):
-        """Get base directory path for current participant."""
-        if P.development_mode:
-            # Use 999 with datetime suffix for unique dev directories
-            datetime_suffix = datetime.now().strftime('%m%d_%H%M')
-            p_id = f'DEV_{datetime_suffix}'
-        else:
-            p_id = str(P.p_id)
-        return os.path.join(
-            P.opti_data_dir, p_id  # type: ignore[known-attribute]
-        )
-
-    def _get_block_dir_path(self):
-        """Construct block directory path."""
-        phase = 'practice' if P.practicing else 'testing'
-        return os.path.join(
-            self.participant_dir, phase, self.hand_used, self.side_used
-        )
-
-    def _get_trial_filename(
-        self,
-        block_dir,
-        participant_id,
-        block_num,
-        trial_num,
-    ):
-        """Construct trial data filename."""
-        filename = (
-            f'P{participant_id}_B{block_num:02d}_T{trial_num:03d}_OptiData.txt'
-        )
-        return os.path.join(block_dir, filename)
 
     def _get_trial_info(self):
         """Collate trial information"""
@@ -407,46 +392,6 @@ class BackHandFrontHand(klibs.Experiment):
             'target_loc': target_loc,
             'distractor_loc': distractor_loc,
         }
-
-    def _add_trial_header_info(self, filepath, trial_info):
-        """Markup file with trial details"""
-
-        header_lines = []
-        header_lines.append(f'#Participant ID: {P.p_id}')
-        for key, value in trial_info.items():
-            header_lines.append(f'#{key.replace("_", " ").title()}: {value}')
-        header_lines.append(
-            f"#Date: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}"
-        )
-        header_lines.append('#----------------------------------------')
-
-        try:
-            with open(filepath, 'r+') as f:
-                content = f.read()
-                f.seek(0, 0)
-                f.writelines('\n'.join(header_lines) + '\n' + content)
-        except IOError as e:
-            raise IOError(
-                f'Cannot write header to trial data file: {filepath} - {e}'
-            )
-
-    def _validate_trial_data_file(self, filepath):
-        """Validate that trial data file exists and contains data. Raises exception if not."""
-        if not os.path.exists(filepath):
-            raise FileNotFoundError(
-                f'Trial data file does not exist: {filepath}'
-            )
-
-        try:
-            with open(filepath, 'r') as f:
-                lines = f.readlines()
-                # Should have at least header + some data lines
-                if len(lines) < 6:
-                    raise ValueError(
-                        f'OptiData file at \n\t{filepath}\nis sparser than expected, with only {len(lines)} lines.'
-                    )
-        except IOError as e:
-            raise IOError(f'Cannot read trial data file: {filepath} - {e}')
 
 
 class PlatoGoggles:
