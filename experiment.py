@@ -95,10 +95,9 @@ class BackHandFrontHand(klibs.Experiment):
         )
 
         sides = [BACK, FRONT]
-        shuffle(sides)
-
         hands = [LEFT, RIGHT] if P.condition == LEFT else [RIGHT, LEFT]  # type: ignore
 
+        shuffle(sides)
         self.task_sequence = [[hand, side] for hand in hands for side in sides]
 
         if P.run_practice_blocks:
