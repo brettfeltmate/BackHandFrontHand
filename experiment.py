@@ -25,6 +25,7 @@ from get_key_state import get_key_state  # type: ignore[import]
 from csv import DictWriter
 from random import shuffle, choice
 import os
+import shutil
 
 # import datatable as dt
 
@@ -119,7 +120,7 @@ class BackHandFrontHand(klibs.Experiment):
                     f'Participant directory already exists: {self.participant_dir}. Please check participant ID or remove existing directory.'
                 )
             else:
-                os.rmdir(self.participant_dir)
+                shutil.rmtree(self.participant_dir)
 
         os.makedirs(self.participant_dir)
 
@@ -146,7 +147,7 @@ class BackHandFrontHand(klibs.Experiment):
                     f'Block directory already exists: {self.block_opti_dir}. Please check block number or remove existing directory.'
                 )
             else:
-                os.rmdir(self.block_opti_dir)
+                shutil.rmtree(self.block_opti_dir)
 
         os.makedirs(self.block_opti_dir)
 
