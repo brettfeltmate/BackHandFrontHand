@@ -71,7 +71,7 @@ datafile_ext = '.txt'
 trials_per_practice_block = 6
 
 placeholder_size_cm = 4
-boundary_radius_cm = 4
+boundary_radius_cm = 7
 placeholder_brim_cm = 1
 placeholder_offset_cm = 15
 
